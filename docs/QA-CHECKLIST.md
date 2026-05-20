@@ -44,10 +44,27 @@ emit a custom action.
 | Copy | ⌘C | Copies selection. | [now] |
 | Paste | ⌘V | Inserts clipboard text. | [now] |
 | Select All | ⌘A | Selects whole document. | [now] |
-| Find… | ⌘F | **Disabled** menu entry; does nothing. | [later] (Phase 7) |
+| Find… | ⌘F | Toggles the Find / Replace bar (top-right of the editor). | [now] |
 
 - [ ] Undo/redo behave against the Milkdown editor, not the OS-level field only.
-- [ ] Find… appears greyed out and ⌘F is a no-op.
+
+## Find / Replace (⌘F)
+
+| Item | Shortcut | Expected | Status |
+| --- | --- | --- | --- |
+| Find… | ⌘F | Opens the find bar and focuses the input; pressing ⌘F again (or Esc) closes it. | [now] |
+
+- [ ] ⌘F opens the find bar; the search input is focused. Pressing ⌘F again closes it.
+- [ ] Typing a query highlights all matches live in the document.
+- [ ] The match-count label shows "N matches" / "No results" and updates as you type.
+- [ ] Enter jumps to the next match; Shift+Enter jumps to the previous match; both wrap around at the ends.
+- [ ] The active match is visually distinct from other highlighted matches.
+- [ ] "Aa" (Match Case) toggles case sensitivity and re-runs the search.
+- [ ] Replace replaces the current match and advances; the dirty dot turns on.
+- [ ] Replace All replaces every match in one step; the dirty dot turns on.
+- [ ] Esc closes the find bar and clears all highlights.
+- [ ] Opening Find while a Save/Open is in flight still works (not blocked by the busy gate).
+- [ ] Highlight colors are legible in both light and dark appearance.
 
 ## View menu (zoom)
 

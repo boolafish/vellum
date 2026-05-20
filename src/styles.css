@@ -186,3 +186,98 @@ body {
   border-color: transparent;
   color: var(--muted);
 }
+
+/* Find / Replace bar — pinned top-right of the editor, modal aesthetic. */
+/* More specific than `.hidden` (which it would otherwise override by order). */
+.find-bar.hidden {
+  display: none;
+}
+
+.find-bar {
+  position: fixed;
+  top: calc(var(--toolbar-h) + 10px);
+  right: 16px;
+  z-index: 900;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px;
+  width: 340px;
+  border-radius: 10px;
+  background: var(--bg);
+  color: var(--fg);
+  box-shadow:
+    0 8px 28px rgba(0, 0, 0, 0.25),
+    0 0 0 1px var(--border);
+  font-size: 13px;
+}
+
+.find-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.find-input,
+.find-replace {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 5px 8px;
+  border-radius: 7px;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--fg) 4%, transparent);
+  color: var(--fg);
+  font-size: 13px;
+  font-family: inherit;
+}
+
+.find-input:focus-visible,
+.find-replace:focus-visible {
+  outline: 2px solid #4d8bff;
+  outline-offset: 1px;
+}
+
+.find-count {
+  flex: 0 0 auto;
+  color: var(--muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.find-btn {
+  flex: 0 0 auto;
+  padding: 4px 9px;
+  border-radius: 7px;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--fg) 6%, transparent);
+  color: var(--fg);
+  font-size: 12px;
+  line-height: 1;
+  cursor: default;
+}
+
+.find-btn:hover {
+  background: color-mix(in srgb, var(--fg) 12%, transparent);
+}
+
+.find-btn:focus-visible {
+  outline: 2px solid #4d8bff;
+  outline-offset: 1px;
+}
+
+.find-btn.find-case.active {
+  background: #2f6bff;
+  border-color: #2f6bff;
+  color: #fff;
+}
+
+/* prosemirror-search highlight decorations */
+.milkdown .ProseMirror .ProseMirror-search-match {
+  background: color-mix(in srgb, #ffd54a 55%, transparent);
+  border-radius: 2px;
+}
+
+.milkdown .ProseMirror .ProseMirror-active-search-match {
+  background: color-mix(in srgb, #ff9a3d 75%, transparent);
+  border-radius: 2px;
+}

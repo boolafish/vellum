@@ -14,7 +14,8 @@
     "@milkdown/crepe": "^7.6.0",
     "@tauri-apps/api": "^2.5.0",
     "@tauri-apps/plugin-dialog": "^2.2.0",
-    "@tauri-apps/plugin-fs": "^2.2.0"
+    "@tauri-apps/plugin-fs": "^2.2.0",
+    "prosemirror-search": "^1.1.0"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2.5.0",

@@ -85,11 +85,9 @@ pub fn build(app: &AppHandle<Wry>, recents: &[String], theme: ThemeMode) -> taur
         .paste()
         .select_all()
         .separator()
-        // Disabled until Find lands (Phase 7); avoids a dead menu entry.
         .item(
             &MenuItemBuilder::with_id("find", "Find…")
                 .accelerator("CmdOrCtrl+F")
-                .enabled(false)
                 .build(app)?,
         )
         .build()?;

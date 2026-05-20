@@ -4,6 +4,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { message } from "@tauri-apps/plugin-dialog";
 
 import { EditorController } from "./editor";
+import { FindBar } from "./find";
 import { Action, MENU_EVENT, OPEN_FILE_EVENT, isAction } from "./ipc";
 import { confirmUnsavedChanges } from "./dialog";
 import { theme, type ThemeMode } from "./theme";
@@ -28,6 +29,7 @@ const OPENABLE = /\.(md|markdown|txt)$/i;
 /** Top-level controller: owns document state and routes menu actions. */
 export class App {
   private readonly editor = new EditorController("#editor");
+  private readonly findBar = new FindBar(this.editor);
   private readonly editorEl = document.querySelector<HTMLElement>("#editor")!;
   private readonly filenameEl = document.querySelector<HTMLElement>("#filename")!;
   private readonly dirtyEl = document.querySelector<HTMLElement>("#dirty-dot")!;
@@ -87,6 +89,12 @@ export class App {
   }
 
   private handle(action: Action): Promise<void> {
+    // Find is a view-only toggle, not a document mutation: keep it out of the
+    // `busy` re-entrancy gate so ⌘F works even while a save/open is settling.
+    if (action === Action.Find) {
+      this.findBar.toggle();
+      return Promise.resolve();
+    }
     return this.runExclusive(() => this.dispatch(action));
   }
 
@@ -144,7 +152,8 @@ export class App {
       case Action.ZoomReset:
         return this.applyZoom(1);
       case Action.Find:
-        return; // Phase 7
+        // Handled in handle() before the busy gate; never reaches here.
+        return;
     }
   }
 
@@ -152,6 +161,7 @@ export class App {
 
   private async newDoc(): Promise<void> {
     if (!(await this.confirmProceed())) return;
+    this.findBar.close();
     await this.editor.load("");
     this.currentPath = null;
     this.setDirty(false);
@@ -172,6 +182,7 @@ export class App {
 
   private async loadPath(path: string): Promise<void> {
     const text = await readFile(path);
+    this.findBar.close(); // stale highlights/query don't belong to the new doc
     await this.editor.load(text);
     this.currentPath = path;
     this.setDirty(false);
