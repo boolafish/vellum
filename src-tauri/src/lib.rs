@@ -65,6 +65,8 @@ pub fn run() {
         .on_menu_event(|app, event| {
             let id = event.id().as_ref();
             if let Some(rest) = id.strip_prefix("recent:") {
+                // Recorded paths are always absolute, so `rest` can never be
+                // the bare sentinels "clear"/"none" — no spoofing risk.
                 match rest {
                     "clear" => recents::clear(app),
                     "none" => {}

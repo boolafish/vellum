@@ -26,11 +26,13 @@ pub fn load(app: &AppHandle<Wry>) -> Vec<String> {
     let Ok(data) = fs::read_to_string(path) else {
         return Vec::new();
     };
-    serde_json::from_str::<Vec<String>>(&data)
-        .unwrap_or_default()
-        .into_iter()
-        .filter(|p| Path::new(p).exists())
-        .collect()
+    let all: Vec<String> = serde_json::from_str(&data).unwrap_or_default();
+    let pruned: Vec<String> = all.iter().filter(|p| Path::new(p).exists()).cloned().collect();
+    // Write back so dead entries don't accumulate across launches.
+    if pruned.len() != all.len() {
+        persist(app, &pruned);
+    }
+    pruned
 }
 
 fn persist(app: &AppHandle<Wry>, list: &[String]) {
@@ -51,22 +53,26 @@ fn rebuild_menu(app: &AppHandle<Wry>, list: &[String]) {
     }
 }
 
-/// Promote `new_path` to the front, persist, and refresh the menu.
+/// Promote `new_path` to the front, persist, and refresh the menu. The lock is
+/// held across persist+rebuild so concurrent adds can't reorder the menu/file.
+/// (`add` is invoked from Tauri command handlers; the lock is brief.)
 pub fn add(app: &AppHandle<Wry>, new_path: &str) {
-    let snapshot = {
-        let state = app.state::<RecentsState>();
-        let mut list = state.list.lock().unwrap();
-        list.retain(|p| p != new_path);
-        list.insert(0, new_path.to_string());
-        list.truncate(MAX_RECENTS);
-        list.clone()
-    };
-    persist(app, &snapshot);
-    rebuild_menu(app, &snapshot);
+    let state = app.state::<RecentsState>();
+    let mut list = state.list.lock().unwrap();
+    if list.first().is_some_and(|p| p == new_path) {
+        return; // already most-recent; nothing to persist or rebuild
+    }
+    list.retain(|p| p != new_path);
+    list.insert(0, new_path.to_string());
+    list.truncate(MAX_RECENTS);
+    persist(app, &list);
+    rebuild_menu(app, &list);
 }
 
 pub fn clear(app: &AppHandle<Wry>) {
-    app.state::<RecentsState>().list.lock().unwrap().clear();
-    persist(app, &[]);
-    rebuild_menu(app, &[]);
+    let state = app.state::<RecentsState>();
+    let mut list = state.list.lock().unwrap();
+    list.clear();
+    persist(app, &list);
+    rebuild_menu(app, &list);
 }
