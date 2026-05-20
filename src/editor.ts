@@ -1,7 +1,7 @@
 import { Crepe } from "@milkdown/crepe";
 import { remarkStringifyOptionsCtx } from "@milkdown/kit/core";
 import "@milkdown/crepe/theme/common/style.css";
-import "@milkdown/crepe/theme/frame.css";
+// The light/dark frame theme is loaded dynamically by theme.ts.
 
 // Stable remark-stringify options so saving normalizes markdown predictably
 // instead of drifting between `*`/`_`, `-`/`*` bullets, indentation, etc.

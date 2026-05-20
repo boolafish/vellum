@@ -6,6 +6,7 @@ import { message } from "@tauri-apps/plugin-dialog";
 import { EditorController } from "./editor";
 import { Action, MENU_EVENT, OPEN_FILE_EVENT, isAction } from "./ipc";
 import { confirmUnsavedChanges } from "./dialog";
+import { theme, type ThemeMode } from "./theme";
 import { basename, pickOpenPath, pickSavePath, readFile, writeFile } from "./files";
 
 const DEFAULT_DOC = `# Welcome
@@ -39,10 +40,20 @@ export class App {
   private pendingClose = false;
 
   async start(): Promise<void> {
+    theme.init();
     this.editor.onChange(() => this.setDirty(true));
     const launchFiles = await this.wireNativeIntegrations();
+    await this.applyStoredTheme();
     await this.openInitialDoc(launchFiles);
     await this.updateChrome();
+  }
+
+  private async applyStoredTheme(): Promise<void> {
+    try {
+      theme.apply((await invoke<string>("get_theme")) as ThemeMode);
+    } catch {
+      /* not running under Tauri; theme.init() already applied "system" */
+    }
   }
 
   /**
@@ -57,6 +68,7 @@ export class App {
       await listen<string>(MENU_EVENT, (e) => {
         if (isAction(e.payload)) void this.handle(e.payload);
       });
+      await listen<string>("theme-changed", (e) => theme.apply(e.payload as ThemeMode));
       // Tell Rust the UI is ready; collect files the app was launched with.
       return await invoke<string[]>("frontend_ready");
     } catch {

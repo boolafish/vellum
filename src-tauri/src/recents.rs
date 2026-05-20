@@ -47,32 +47,30 @@ fn persist(app: &AppHandle<Wry>, list: &[String]) {
     }
 }
 
-fn rebuild_menu(app: &AppHandle<Wry>, list: &[String]) {
-    if let Ok(menu) = crate::menu::build(app, list) {
-        let _ = app.set_menu(menu);
-    }
-}
-
-/// Promote `new_path` to the front, persist, and refresh the menu. The lock is
-/// held across persist+rebuild so concurrent adds can't reorder the menu/file.
-/// (`add` is invoked from Tauri command handlers; the lock is brief.)
+/// Promote `new_path` to the front, persist, and refresh the menu. The mutation
+/// + persist happen under the lock; the lock is released before `refresh_menu`
+/// (which re-reads the list) to avoid a non-reentrant deadlock.
 pub fn add(app: &AppHandle<Wry>, new_path: &str) {
-    let state = app.state::<RecentsState>();
-    let mut list = state.list.lock().unwrap();
-    if list.first().is_some_and(|p| p == new_path) {
-        return; // already most-recent; nothing to persist or rebuild
+    {
+        let state = app.state::<RecentsState>();
+        let mut list = state.list.lock().unwrap();
+        if list.first().is_some_and(|p| p == new_path) {
+            return; // already most-recent; nothing to persist or rebuild
+        }
+        list.retain(|p| p != new_path);
+        list.insert(0, new_path.to_string());
+        list.truncate(MAX_RECENTS);
+        persist(app, &list);
     }
-    list.retain(|p| p != new_path);
-    list.insert(0, new_path.to_string());
-    list.truncate(MAX_RECENTS);
-    persist(app, &list);
-    rebuild_menu(app, &list);
+    crate::refresh_menu(app);
 }
 
 pub fn clear(app: &AppHandle<Wry>) {
-    let state = app.state::<RecentsState>();
-    let mut list = state.list.lock().unwrap();
-    list.clear();
-    persist(app, &list);
-    rebuild_menu(app, &list);
+    {
+        let state = app.state::<RecentsState>();
+        let mut list = state.list.lock().unwrap();
+        list.clear();
+        persist(app, &list);
+    }
+    crate::refresh_menu(app);
 }

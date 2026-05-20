@@ -1,12 +1,25 @@
 mod menu;
 mod recents;
+mod theme;
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
 
-use tauri::{Emitter, Manager, State};
+use tauri::{AppHandle, Emitter, Manager, State};
 
 use recents::RecentsState;
+use theme::{ThemeMode, ThemeState};
+
+/// Rebuild and install the app menu from current state (recents + theme).
+/// Called whenever either changes. Must not be called while holding a state
+/// lock it re-reads (RecentsState / ThemeState).
+pub fn refresh_menu(app: &AppHandle) {
+    let recents = app.state::<RecentsState>().list.lock().unwrap().clone();
+    let theme = app.state::<ThemeState>().get();
+    if let Ok(menu) = menu::build(app, &recents, theme) {
+        let _ = app.set_menu(menu);
+    }
+}
 
 /// Paths the app was asked to open before the frontend was ready (cold launch
 /// via Finder "Open With" / double-click). Drained by `frontend_ready`.
@@ -31,8 +44,13 @@ fn get_recents(state: State<RecentsState>) -> Vec<String> {
 }
 
 #[tauri::command]
-fn add_recent(app: tauri::AppHandle, path: String) {
+fn add_recent(app: AppHandle, path: String) {
     recents::add(&app, &path);
+}
+
+#[tauri::command]
+fn get_theme(state: State<ThemeState>) -> String {
+    state.get().as_str().to_string()
 }
 
 fn handle_opened(app: &tauri::AppHandle, urls: Vec<tauri::Url>) {
@@ -61,7 +79,12 @@ pub fn run() {
         .plugin(tauri_plugin_window_state::Builder::default().build())
         .manage(PendingOpen::default())
         .manage(FrontendReady::default())
-        .invoke_handler(tauri::generate_handler![frontend_ready, get_recents, add_recent])
+        .invoke_handler(tauri::generate_handler![
+            frontend_ready,
+            get_recents,
+            add_recent,
+            get_theme
+        ])
         .on_menu_event(|app, event| {
             let id = event.id().as_ref();
             if let Some(rest) = id.strip_prefix("recent:") {
@@ -74,6 +97,10 @@ pub fn run() {
                         let _ = app.emit("open-path", path);
                     }
                 }
+            } else if let Some(mode) = id.strip_prefix("theme:") {
+                // Persist + refresh checkmarks, then tell the frontend to apply.
+                theme::set(app, ThemeMode::from_str(mode));
+                let _ = app.emit("theme-changed", mode);
             } else {
                 // Predefined items (undo/copy/…) are handled natively and never
                 // reach here; only our custom ids do. Forward them verbatim.
@@ -82,11 +109,13 @@ pub fn run() {
         })
         .setup(|app| {
             let handle = app.handle();
-            let initial = recents::load(handle);
+            let recents = recents::load(handle);
             app.manage(RecentsState {
-                list: Mutex::new(initial.clone()),
+                list: Mutex::new(recents.clone()),
             });
-            app.set_menu(menu::build(handle, &initial)?)?;
+            app.manage(theme::load(handle));
+            let theme = app.state::<ThemeState>().get();
+            app.set_menu(menu::build(handle, &recents, theme)?)?;
             Ok(())
         })
         .build(tauri::generate_context!())

@@ -6,8 +6,18 @@
   --border: #ececec;
 }
 
+/* Dark palette: applied when forced (data-theme="dark") or, in System mode
+   (no data-theme attribute), when the OS prefers dark. data-theme="light"
+   pins light regardless of OS. Theme.ts also swaps Crepe's frame stylesheet. */
+:root[data-theme="dark"] {
+  --bg: #1e1e1e;
+  --fg: #e8e8e8;
+  --muted: #777;
+  --border: #2c2c2c;
+}
+
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme]) {
     --bg: #1e1e1e;
     --fg: #e8e8e8;
     --muted: #777;
@@ -71,6 +81,36 @@ body {
   max-width: 720px;
   margin: 0 auto;
   padding: 24px 32px 40vh;
+}
+
+/* Typography polish: comfortable reading rhythm on top of the Crepe theme. */
+.milkdown .ProseMirror {
+  line-height: 1.7;
+  font-size: 16px;
+  letter-spacing: 0.1px;
+}
+
+.milkdown .ProseMirror > * + * {
+  margin-top: 0.9em;
+}
+
+.milkdown .ProseMirror h1,
+.milkdown .ProseMirror h2,
+.milkdown .ProseMirror h3 {
+  line-height: 1.3;
+  margin-top: 1.6em;
+}
+
+.milkdown .ProseMirror h1 {
+  letter-spacing: -0.4px;
+}
+
+.milkdown .ProseMirror blockquote {
+  color: var(--muted);
+}
+
+.milkdown .ProseMirror :not(pre) > code {
+  font-size: 0.9em;
 }
 
 /* Unsaved-changes sheet */
