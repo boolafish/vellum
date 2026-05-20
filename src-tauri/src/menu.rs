@@ -15,7 +15,12 @@ pub fn build(app: &AppHandle<Wry>) -> tauri::Result<Menu<Wry>> {
         .hide_others()
         .show_all()
         .separator()
-        .quit()
+        // Custom quit (not predefined) so it routes through the dirty guard.
+        .item(
+            &MenuItemBuilder::with_id("quit", "Quit MD Editor")
+                .accelerator("CmdOrCtrl+Q")
+                .build(app)?,
+        )
         .build()?;
 
     let file_menu = SubmenuBuilder::new(app, "File")

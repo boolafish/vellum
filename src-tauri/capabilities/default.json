@@ -8,6 +8,7 @@
     "core:event:default",
     "core:window:allow-set-title",
     "core:window:allow-close",
+    "core:window:allow-destroy",
     "dialog:default",
     "fs:allow-read-text-file",
     "fs:allow-write-text-file",

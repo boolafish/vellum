@@ -72,3 +72,77 @@ body {
   margin: 0 auto;
   padding: 24px 32px 40vh;
 }
+
+/* Unsaved-changes sheet */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.18);
+  -webkit-backdrop-filter: blur(2px);
+  backdrop-filter: blur(2px);
+}
+
+.modal {
+  width: 340px;
+  padding: 20px 20px 16px;
+  border-radius: 12px;
+  background: var(--bg);
+  color: var(--fg);
+  box-shadow:
+    0 10px 40px rgba(0, 0, 0, 0.3),
+    0 0 0 1px var(--border);
+  font-size: 13px;
+}
+
+.modal-title {
+  margin: 0 0 6px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.modal-body {
+  margin: 0 0 18px;
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+.modal-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.modal-spacer {
+  flex: 1;
+}
+
+.modal-btn {
+  padding: 5px 14px;
+  border-radius: 7px;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--fg) 6%, transparent);
+  color: var(--fg);
+  font-size: 13px;
+  cursor: default;
+}
+
+.modal-btn:focus-visible {
+  outline: 2px solid #4d8bff;
+  outline-offset: 1px;
+}
+
+.modal-btn.primary {
+  background: #2f6bff;
+  border-color: #2f6bff;
+  color: #fff;
+}
+
+.modal-btn.ghost {
+  background: transparent;
+  border-color: transparent;
+  color: var(--muted);
+}

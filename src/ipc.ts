@@ -8,6 +8,7 @@ export const Action = {
   Save: "save",
   SaveAs: "save-as",
   Close: "close",
+  Quit: "quit",
   Find: "find",
   ZoomIn: "zoom-in",
   ZoomOut: "zoom-out",
@@ -18,6 +19,9 @@ export type Action = (typeof Action)[keyof typeof Action];
 
 /** Event name Rust emits when a custom menu item is selected. Payload: Action. */
 export const MENU_EVENT = "menu:action";
+
+/** Event Rust emits with a file path to open (Finder "Open With", drag-on-dock). */
+export const OPEN_FILE_EVENT = "open-path";
 
 const ACTION_VALUES = new Set<string>(Object.values(Action));
 

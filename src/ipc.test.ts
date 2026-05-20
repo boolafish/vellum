@@ -12,10 +12,14 @@ describe("isAction", () => {
     expect(isAction("zoom-reset")).toBe(true);
   });
 
+  it("accepts the custom quit action (routes through the dirty guard)", () => {
+    expect(isAction("quit")).toBe(true);
+  });
+
   it("rejects predefined native menu ids that never reach the dispatcher", () => {
     // These are handled natively by WKWebView and must not be treated as
     // custom Actions if they ever leaked through the event.
-    for (const id of ["copy", "undo", "redo", "cut", "paste", "select-all", "quit"]) {
+    for (const id of ["copy", "undo", "redo", "cut", "paste", "select-all"]) {
       expect(isAction(id)).toBe(false);
     }
   });

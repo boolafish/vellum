@@ -20,7 +20,7 @@
         "minHeight": 360,
         "titleBarStyle": "Overlay",
         "hiddenTitle": true,
-        "dragDropEnabled": false
+        "dragDropEnabled": true
       }
     ],
     "security": {
@@ -35,6 +35,13 @@
       "icons/128x128.png",
       "icons/128x128@2x.png",
       "icons/icon.icns"
+    ],
+    "fileAssociations": [
+      {
+        "ext": ["md", "markdown", "txt"],
+        "name": "Markdown Document",
+        "role": "Editor"
+      }
     ]
   }
 }
