@@ -41,7 +41,13 @@ pub fn build(app: &AppHandle<Wry>) -> tauri::Result<Menu<Wry>> {
         .paste()
         .select_all()
         .separator()
-        .item(&MenuItemBuilder::with_id("find", "Find…").accelerator("CmdOrCtrl+F").build(app)?)
+        // Disabled until Find lands (Phase 7); avoids a dead menu entry.
+        .item(
+            &MenuItemBuilder::with_id("find", "Find…")
+                .accelerator("CmdOrCtrl+F")
+                .enabled(false)
+                .build(app)?,
+        )
         .build()?;
 
     let view_menu = SubmenuBuilder::new(app, "View")
@@ -62,12 +68,10 @@ pub fn build(app: &AppHandle<Wry>) -> tauri::Result<Menu<Wry>> {
         )
         .build()?;
 
-    let window_menu = SubmenuBuilder::new(app, "Window")
-        .minimize()
-        .maximize()
-        .separator()
-        .close_window()
-        .build()?;
+    // No close_window() here: File ▸ Close (custom "close") owns Cmd+W so the
+    // dirty-guard (Phase 2) can intercept it. A native close_window would bind
+    // the same accelerator and bypass the dispatcher.
+    let window_menu = SubmenuBuilder::new(app, "Window").minimize().maximize().build()?;
 
     MenuBuilder::new(app)
         .items(&[&app_menu, &file_menu, &edit_menu, &view_menu, &window_menu])

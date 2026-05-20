@@ -1,5 +1,6 @@
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { listen } from "@tauri-apps/api/event";
+import { message } from "@tauri-apps/plugin-dialog";
 
 import { EditorController } from "./editor";
 import { Action, MENU_EVENT, isAction } from "./ipc";
@@ -30,29 +31,57 @@ export class App {
   private currentPath: string | null = null;
   private dirty = false;
   private zoom = 1;
+  private busy = false;
 
   async start(): Promise<void> {
     this.editor.onChange(() => this.setDirty(true));
     await this.editor.load(DEFAULT_DOC);
     this.setDirty(false);
     await listen<string>(MENU_EVENT, (e) => {
-      if (isAction(e.payload)) void this.dispatch(e.payload);
+      if (isAction(e.payload)) void this.handle(e.payload);
     });
     await this.updateChrome();
   }
 
-  private dispatch(action: Action): Promise<void> | void {
+  /**
+   * Serializes menu actions (one at a time) and reports failures to the user,
+   * so an in-flight Open can't interleave with a Save and silently corrupt
+   * state, and file-I/O errors surface instead of becoming silent rejections.
+   */
+  private async handle(action: Action): Promise<void> {
+    if (this.busy) return;
+    this.busy = true;
+    try {
+      await this.dispatch(action);
+    } catch (err) {
+      console.error(`Action "${action}" failed:`, err);
+      try {
+        await message(err instanceof Error ? err.message : String(err), {
+          title: "Something went wrong",
+          kind: "error",
+        });
+      } catch {
+        /* dialog unavailable outside Tauri */
+      }
+    } finally {
+      this.busy = false;
+    }
+  }
+
+  private async dispatch(action: Action): Promise<void> {
     switch (action) {
       case Action.New:
         return this.newDoc();
       case Action.Open:
         return this.openDoc();
       case Action.Save:
-        return void this.saveDoc(false);
+        await this.saveDoc(false);
+        return;
       case Action.SaveAs:
-        return void this.saveDoc(true);
+        await this.saveDoc(true);
+        return;
       case Action.Close:
-        return void getCurrentWindow().close();
+        return getCurrentWindow().close();
       case Action.ZoomIn:
         return this.applyZoom(this.zoom + ZOOM_STEP);
       case Action.ZoomOut:
