@@ -36,6 +36,7 @@ export class App {
   private zoom = 1;
   private busy = false;
   private closing = false;
+  private pendingClose = false;
 
   async start(): Promise<void> {
     this.editor.onChange(() => this.setDirty(true));
@@ -64,18 +65,23 @@ export class App {
     await this.updateChrome();
   }
 
+  private handle(action: Action): Promise<void> {
+    return this.runExclusive(() => this.dispatch(action));
+  }
+
   /**
-   * Serializes menu actions (one at a time) and reports failures to the user,
-   * so an in-flight Open can't interleave with a Save, and file-I/O errors
-   * surface instead of becoming silent rejections.
+   * Runs one mutating operation at a time and reports failures to the user, so
+   * an in-flight Open can't interleave with a Save and I/O errors surface
+   * instead of becoming silent rejections. A close request that arrives while
+   * busy is deferred (pendingClose) and retried here, so it's never dropped.
    */
-  private async handle(action: Action): Promise<void> {
+  private async runExclusive(op: () => Promise<void>): Promise<void> {
     if (this.busy) return;
     this.busy = true;
     try {
-      await this.dispatch(action);
+      await op();
     } catch (err) {
-      console.error(`Action "${action}" failed:`, err);
+      console.error("Action failed:", err);
       try {
         await message(err instanceof Error ? err.message : String(err), {
           title: "Something went wrong",
@@ -86,6 +92,10 @@ export class App {
       }
     } finally {
       this.busy = false;
+      if (this.pendingClose && !this.closing) {
+        this.pendingClose = false;
+        void this.requestClose();
+      }
     }
   }
 
@@ -133,17 +143,10 @@ export class App {
   }
 
   /** Open a path supplied by the OS (launch file, "Open With", drag-on-dock). */
-  private async openExternal(path: string): Promise<void> {
-    if (this.busy) return;
-    this.busy = true;
-    try {
-      if (!(await this.confirmProceed())) return;
-      await this.loadPath(path);
-    } catch (err) {
-      console.error("Open failed:", err);
-    } finally {
-      this.busy = false;
-    }
+  private openExternal(path: string): Promise<void> {
+    return this.runExclusive(async () => {
+      if (await this.confirmProceed()) await this.loadPath(path);
+    });
   }
 
   private async loadPath(path: string): Promise<void> {
@@ -182,26 +185,27 @@ export class App {
   // --- Window & OS integration ---
 
   private async installCloseGuard(): Promise<void> {
-    const win = getCurrentWindow();
-    await win.onCloseRequested((event) => {
-      // Always hold the native close; we destroy manually once approved so the
-      // guard can run async without the window vanishing underneath it.
+    await getCurrentWindow().onCloseRequested((event) => {
+      // Hold the native close; we destroy manually once the guard approves.
       event.preventDefault();
-      void this.handleCloseRequest();
+      void this.requestClose();
     });
   }
 
-  private async handleCloseRequest(): Promise<void> {
-    if (this.closing || this.busy) return;
-    this.busy = true;
-    try {
+  private async requestClose(): Promise<void> {
+    if (this.closing) return;
+    if (this.busy) {
+      // A menu action / file open is mid-flight (e.g. a dialog is open).
+      // Defer; runExclusive's finally retries this so the close isn't lost.
+      this.pendingClose = true;
+      return;
+    }
+    await this.runExclusive(async () => {
       if (await this.confirmProceed()) {
         this.closing = true;
         await getCurrentWindow().destroy();
       }
-    } finally {
-      this.busy = false;
-    }
+    });
   }
 
   private async installFileOpening(): Promise<void> {
