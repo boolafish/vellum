@@ -1,11 +1,34 @@
-use tauri::menu::{Menu, MenuBuilder, MenuItemBuilder, SubmenuBuilder};
+use tauri::menu::{Menu, MenuBuilder, MenuItemBuilder, Submenu, SubmenuBuilder};
 use tauri::{AppHandle, Wry};
+
+/// Builds the "Open Recent" submenu. Items carry ids `recent:<path>`, handled
+/// in `lib.rs`; `recent:clear` empties the list, `recent:none` is a disabled
+/// placeholder.
+fn recent_submenu(app: &AppHandle<Wry>, recents: &[String]) -> tauri::Result<Submenu<Wry>> {
+    let mut builder = SubmenuBuilder::new(app, "Open Recent");
+    if recents.is_empty() {
+        builder = builder.item(
+            &MenuItemBuilder::with_id("recent:none", "No Recent Files")
+                .enabled(false)
+                .build(app)?,
+        );
+    } else {
+        for path in recents {
+            let label = path.rsplit(['/', '\\']).next().unwrap_or(path);
+            builder = builder.item(&MenuItemBuilder::with_id(format!("recent:{path}"), label).build(app)?);
+        }
+        builder = builder
+            .separator()
+            .item(&MenuItemBuilder::with_id("recent:clear", "Clear Menu").build(app)?);
+    }
+    builder.build()
+}
 
 /// Builds the native macOS menu bar. Custom items carry ids that match
 /// `src/ipc.ts`; selecting one fires `on_menu_event`, which forwards the id
 /// to the frontend. Edit-menu items use predefined (native) actions so
 /// undo/redo/clipboard work against WKWebView directly.
-pub fn build(app: &AppHandle<Wry>) -> tauri::Result<Menu<Wry>> {
+pub fn build(app: &AppHandle<Wry>, recents: &[String]) -> tauri::Result<Menu<Wry>> {
     let app_menu = SubmenuBuilder::new(app, "MD Editor")
         .about(None)
         .separator()
@@ -26,6 +49,7 @@ pub fn build(app: &AppHandle<Wry>) -> tauri::Result<Menu<Wry>> {
     let file_menu = SubmenuBuilder::new(app, "File")
         .item(&MenuItemBuilder::with_id("new", "New").accelerator("CmdOrCtrl+N").build(app)?)
         .item(&MenuItemBuilder::with_id("open", "Open…").accelerator("CmdOrCtrl+O").build(app)?)
+        .item(&recent_submenu(app, recents)?)
         .separator()
         .item(&MenuItemBuilder::with_id("save", "Save").accelerator("CmdOrCtrl+S").build(app)?)
         .item(

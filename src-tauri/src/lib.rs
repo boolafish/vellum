@@ -1,9 +1,12 @@
 mod menu;
+mod recents;
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
 
 use tauri::{Emitter, Manager, State};
+
+use recents::RecentsState;
 
 /// Paths the app was asked to open before the frontend was ready (cold launch
 /// via Finder "Open With" / double-click). Drained by `frontend_ready`.
@@ -20,6 +23,16 @@ struct FrontendReady(AtomicBool);
 fn frontend_ready(pending: State<PendingOpen>, ready: State<FrontendReady>) -> Vec<String> {
     ready.0.store(true, Ordering::SeqCst);
     std::mem::take(&mut pending.0.lock().unwrap())
+}
+
+#[tauri::command]
+fn get_recents(state: State<RecentsState>) -> Vec<String> {
+    state.list.lock().unwrap().clone()
+}
+
+#[tauri::command]
+fn add_recent(app: tauri::AppHandle, path: String) {
+    recents::add(&app, &path);
 }
 
 fn handle_opened(app: &tauri::AppHandle, urls: Vec<tauri::Url>) {
@@ -45,14 +58,34 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
+        .plugin(tauri_plugin_window_state::Builder::default().build())
         .manage(PendingOpen::default())
         .manage(FrontendReady::default())
-        .invoke_handler(tauri::generate_handler![frontend_ready])
-        .menu(|handle| menu::build(handle))
+        .invoke_handler(tauri::generate_handler![frontend_ready, get_recents, add_recent])
         .on_menu_event(|app, event| {
-            // Predefined items (undo/copy/…) are handled natively and never
-            // reach here; only our custom ids do. Forward them verbatim.
-            let _ = app.emit("menu:action", event.id().as_ref());
+            let id = event.id().as_ref();
+            if let Some(rest) = id.strip_prefix("recent:") {
+                match rest {
+                    "clear" => recents::clear(app),
+                    "none" => {}
+                    path => {
+                        let _ = app.emit("open-path", path);
+                    }
+                }
+            } else {
+                // Predefined items (undo/copy/…) are handled natively and never
+                // reach here; only our custom ids do. Forward them verbatim.
+                let _ = app.emit("menu:action", id);
+            }
+        })
+        .setup(|app| {
+            let handle = app.handle();
+            let initial = recents::load(handle);
+            app.manage(RecentsState {
+                list: Mutex::new(initial.clone()),
+            });
+            app.set_menu(menu::build(handle, &initial)?)?;
+            Ok(())
         })
         .build(tauri::generate_context!())
         .expect("error while building tauri application")

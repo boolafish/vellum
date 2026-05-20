@@ -40,29 +40,38 @@ export class App {
 
   async start(): Promise<void> {
     this.editor.onChange(() => this.setDirty(true));
+    const launchFiles = await this.wireNativeIntegrations();
+    await this.openInitialDoc(launchFiles);
+    await this.updateChrome();
+  }
 
-    await this.installCloseGuard();
-    await this.installFileOpening();
-    await listen<string>(MENU_EVENT, (e) => {
-      if (isAction(e.payload)) void this.handle(e.payload);
-    });
-
-    // Tell Rust the UI is ready and collect any file the app was launched with
-    // (Finder "Open With" / double-click). Falls back to the welcome document.
-    let launchFiles: string[] = [];
+  /**
+   * Wire the native menu, close guard, and file-opening. Best-effort: if we're
+   * not running under Tauri (e.g. plain `vite dev` in a browser), this returns
+   * [] so the editor still loads. Otherwise returns any launch files.
+   */
+  private async wireNativeIntegrations(): Promise<string[]> {
     try {
-      launchFiles = await invoke<string[]>("frontend_ready");
+      await this.installCloseGuard();
+      await this.installFileOpening();
+      await listen<string>(MENU_EVENT, (e) => {
+        if (isAction(e.payload)) void this.handle(e.payload);
+      });
+      // Tell Rust the UI is ready; collect files the app was launched with.
+      return await invoke<string[]>("frontend_ready");
     } catch {
-      /* not running under Tauri */
+      return [];
     }
+  }
+
+  private async openInitialDoc(launchFiles: string[]): Promise<void> {
     const launchFile = launchFiles.find((p) => OPENABLE.test(p));
     if (launchFile) {
       await this.loadPath(launchFile);
-    } else {
+    } else if (!(await this.reopenLastFile())) {
       await this.editor.load(DEFAULT_DOC);
       this.setDirty(false);
     }
-    await this.updateChrome();
   }
 
   private handle(action: Action): Promise<void> {
@@ -154,6 +163,28 @@ export class App {
     await this.editor.load(text);
     this.currentPath = path;
     this.setDirty(false);
+    void this.recordRecent(path);
+  }
+
+  /** Reopen the most recent file on launch. Returns false if there's none. */
+  private async reopenLastFile(): Promise<boolean> {
+    try {
+      const recents = await invoke<string[]>("get_recents");
+      const last = recents[0]; // Rust prunes paths that no longer exist
+      if (!last) return false;
+      await this.loadPath(last);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  private async recordRecent(path: string): Promise<void> {
+    try {
+      await invoke("add_recent", { path });
+    } catch {
+      /* not running under Tauri */
+    }
   }
 
   /** Returns true if the document was saved (false if the user cancelled). */
@@ -166,6 +197,7 @@ export class App {
     await writeFile(path, this.editor.getMarkdown());
     this.currentPath = path;
     this.setDirty(false);
+    void this.recordRecent(path);
     return true;
   }
 
