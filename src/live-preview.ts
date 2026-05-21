@@ -627,6 +627,13 @@ function buildDecorations(view: EditorView): LivePreviewDecos {
           return;
         }
 
+        // --- Escape (`\*`, `\_`, …): hide the backslash, show the literal
+        // character (revealed when editing the line, like other markers). ---
+        if (name === "Escape") {
+          conceal(node.from, node.from + 1);
+          return;
+        }
+
         // --- Strong / Emphasis / Strikethrough: style content; conceal the
         // delimiter marks unless the cursor is within THIS span (per-construct
         // reveal, not whole-line). ---
