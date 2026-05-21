@@ -18,6 +18,11 @@
 :root {
   --toolbar-h: 38px;
 
+  /* Themes native controls (scrollbars, form widgets) to match — without this
+     WKWebView paints light-mode scrollbars even on a dark page. Overridden in
+     the dark blocks below. */
+  color-scheme: light;
+
   /* Light — warm paper. Ink is a warm charcoal (not cold black) so it sits
      naturally on cream rather than looking printed on. */
   --bg: #f7f3e8;
@@ -38,6 +43,8 @@
    pins light regardless of OS. Theme.ts also reconfigures the CodeMirror
    theme + syntax highlighting to match. */
 :root[data-theme="dark"] {
+  color-scheme: dark;
+
   /* Dark — neutral charcoal-slate (a touch of blue-grey, not navy). */
   --bg: #2d3135;
   --fg: #d8dbde;
@@ -54,6 +61,8 @@
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme]) {
+    color-scheme: dark;
+
     --bg: #2d3135;
     --fg: #d8dbde;
     --muted: #8a9197;
