@@ -14,11 +14,7 @@ import {
   undo as cmUndo,
   redo as cmRedo,
 } from "@codemirror/commands";
-import {
-  defaultHighlightStyle,
-  syntaxHighlighting,
-  HighlightStyle,
-} from "@codemirror/language";
+import { syntaxHighlighting, HighlightStyle } from "@codemirror/language";
 import { markdown } from "@codemirror/lang-markdown";
 import {
   SearchQuery,
@@ -39,20 +35,20 @@ export interface SearchOptions {
 }
 
 /**
- * A dark syntax-highlight style. CM6's bundled defaultHighlightStyle is tuned
- * for light backgrounds, so we provide a complementary dark palette and swap
- * between them in the highlight compartment alongside the editor theme.
+ * Document-style highlighting (NOT code-style). The key to a clean Typora look
+ * is restraint: body text stays one ink color, emphasis comes from the
+ * live-preview layer's weight/size, and the only real color is for links. The
+ * markdown markers (#, **, >, backticks…) are dimmed to a low-contrast gray so
+ * that when they're revealed on the active line the reveal is quiet, not noisy.
+ * We deliberately do NOT color headings/strong/emphasis here.
  */
+const lightHighlightStyle = HighlightStyle.define([
+  { tag: [tags.processingInstruction, tags.meta], color: "#bcbcbc" },
+  { tag: [tags.link, tags.url], color: "#2f6bff" },
+]);
 const darkHighlightStyle = HighlightStyle.define([
-  { tag: tags.heading, color: "#9cdcfe", fontWeight: "bold" },
-  { tag: tags.strong, color: "#e8e8e8", fontWeight: "bold" },
-  { tag: tags.emphasis, color: "#e8e8e8", fontStyle: "italic" },
-  { tag: tags.link, color: "#4da6ff" },
-  { tag: tags.url, color: "#4da6ff" },
-  { tag: tags.monospace, color: "#ce9178" },
-  { tag: tags.quote, color: "#9aa0a6" },
-  { tag: [tags.list, tags.contentSeparator], color: "#c586c0" },
-  { tag: tags.processingInstruction, color: "#777" },
+  { tag: [tags.processingInstruction, tags.meta], color: "#5c5c5c" },
+  { tag: [tags.link, tags.url], color: "#6aa9ff" },
 ]);
 
 const baseLightTheme = EditorView.theme({}, { dark: false });
@@ -137,7 +133,7 @@ export class EditorController {
         this.highlightCompartment.of(
           this.dark
             ? syntaxHighlighting(darkHighlightStyle, { fallback: true })
-            : syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
+            : syntaxHighlighting(lightHighlightStyle, { fallback: true }),
         ),
         this.fontCompartment.of(this.fontTheme(this.fontLevel)),
         livePreview(),
@@ -184,7 +180,7 @@ export class EditorController {
         this.highlightCompartment.reconfigure(
           dark
             ? syntaxHighlighting(darkHighlightStyle, { fallback: true })
-            : syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
+            : syntaxHighlighting(lightHighlightStyle, { fallback: true }),
         ),
       ],
     });

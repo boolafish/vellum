@@ -334,6 +334,24 @@ body {
   color: var(--muted);
 }
 
+/* Heading rhythm: real space above each heading (blank source lines handle the
+   space below), so headings breathe like Typora. The size/weight come from the
+   live-preview base theme. */
+.cm-line.cm-lp-h1,
+.cm-line.cm-lp-h2,
+.cm-line.cm-lp-h3,
+.cm-line.cm-lp-h4,
+.cm-line.cm-lp-h5,
+.cm-line.cm-lp-h6 {
+  margin-top: 0.9em;
+}
+
+.cm-line.cm-lp-h1 {
+  margin-top: 0.4em;
+  padding-bottom: 0.15em;
+  border-bottom: 1px solid var(--border);
+}
+
 /* Search-match highlight decorations (custom ViewPlugin in editor.ts). */
 .cm-searchMatch {
   background: color-mix(in srgb, #ffd54a 55%, transparent);
