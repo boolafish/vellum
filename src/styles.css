@@ -398,3 +398,69 @@ body {
   background: color-mix(in srgb, #ff9a3d 75%, transparent);
   border-radius: 2px;
 }
+
+/* ---- Rendered tables (block widget from live-preview.ts) ---- */
+.cm-lp-table-wrap {
+  overflow-x: auto;
+  margin: 0.4em 0;
+}
+
+.cm-lp-table {
+  border-collapse: collapse;
+  font-size: 0.95em;
+  line-height: 1.5;
+}
+
+.cm-lp-table th,
+.cm-lp-table td {
+  border: 1px solid var(--border);
+  padding: 6px 13px;
+  text-align: left;
+}
+
+.cm-lp-table th {
+  font-weight: 600;
+  background: color-mix(in srgb, var(--fg) 5%, transparent);
+}
+
+.cm-lp-table tbody tr:nth-child(even) td {
+  background: color-mix(in srgb, var(--fg) 2.5%, transparent);
+}
+
+/* ---- Rendered images (block / inline widgets) ---- */
+.cm-lp-img-block {
+  display: block;
+  margin: 0.4em 0;
+}
+
+.cm-lp-img-inline {
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.cm-lp-img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 4px;
+}
+
+.cm-lp-img-fallback {
+  color: var(--muted);
+  font-style: italic;
+}
+
+/* ---- Rendered math (KaTeX widgets) ---- */
+.cm-lp-math-block {
+  display: block;
+  margin: 0.4em 0;
+  text-align: center;
+}
+
+.cm-lp-math-inline {
+  display: inline-block;
+}
+
+.cm-lp-math-error {
+  color: #cf222e;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+}

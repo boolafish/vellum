@@ -17,6 +17,7 @@ import {
 import { syntaxHighlighting, HighlightStyle, syntaxTree } from "@codemirror/language";
 import { markdown } from "@codemirror/lang-markdown";
 import { languages as codeLanguages } from "@codemirror/language-data";
+import { Table } from "@lezer/markdown";
 import {
   SearchQuery,
   setSearchQuery,
@@ -27,7 +28,7 @@ import {
   replaceAll as cmReplaceAll,
 } from "@codemirror/search";
 import { tags } from "@lezer/highlight";
-import { livePreview } from "./live-preview";
+import { livePreview, setDocPath, docPathChanged } from "./live-preview";
 
 export interface SearchOptions {
   query: string;
@@ -184,7 +185,7 @@ export class EditorController {
       extensions: [
         history(),
         keymap.of([...defaultKeymap, ...historyKeymap]),
-        markdown({ codeLanguages }),
+        markdown({ codeLanguages, extensions: [Table] }),
         EditorView.lineWrapping,
         this.themeCompartment.of(this.dark ? baseDarkTheme : baseLightTheme),
         this.highlightCompartment.of(
@@ -246,6 +247,18 @@ export class EditorController {
 
   getMarkdown(): string {
     return this.view.state.doc.toString();
+  }
+
+  /**
+   * Record the on-disk path of the current document so the live-preview layer
+   * can resolve relative image `src`s against the document's directory. Pass
+   * null for unsaved/Untitled docs.
+   */
+  setDocPath(path: string | null): void {
+    setDocPath(path);
+    // Force a decoration rebuild so already-rendered images pick up the new
+    // base path (a bare setter wouldn't trigger the ViewPlugin's update()).
+    this.view.dispatch({ effects: docPathChanged.of(null) });
   }
 
   setTheme(dark: boolean): void {

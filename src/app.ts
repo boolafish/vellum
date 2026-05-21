@@ -184,6 +184,7 @@ export class App {
     this.findBar.close();
     await this.editor.load("");
     this.currentPath = null;
+    this.editor.setDocPath(null);
     this.setDirty(false);
   }
 
@@ -205,6 +206,7 @@ export class App {
     this.findBar.close(); // stale highlights/query don't belong to the new doc
     await this.editor.load(text);
     this.currentPath = path;
+    this.editor.setDocPath(path);
     this.setDirty(false);
     void this.recordRecent(path);
   }
@@ -239,6 +241,7 @@ export class App {
     }
     await writeFile(path, this.editor.getMarkdown());
     this.currentPath = path;
+    this.editor.setDocPath(path);
     this.setDirty(false);
     void this.recordRecent(path);
     return true;

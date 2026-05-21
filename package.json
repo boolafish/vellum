@@ -23,10 +23,13 @@
     "@tauri-apps/api": "^2.5.0",
     "@tauri-apps/plugin-dialog": "^2.2.0",
     "@tauri-apps/plugin-fs": "^2.2.0",
-    "@tauri-apps/plugin-opener": "^2.5.4"
+    "@tauri-apps/plugin-opener": "^2.5.4",
+    "@types/katex": "^0.16.8",
+    "katex": "^0.16.47"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2.5.0",
+    "jsdom": "^29.1.1",
     "typescript": "^5.8.0",
     "vite": "^6.3.0",
     "vitest": "^3.0.0"
