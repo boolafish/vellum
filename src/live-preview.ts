@@ -693,20 +693,30 @@ function buildDecorations(view: EditorView): LivePreviewDecos {
             if (cc.name === "CodeInfo") lang = doc.sliceString(cc.from, cc.to).trim();
             cc = cc.nextSibling;
           }
-          for (let n = startLine; n <= endLine; n++) {
-            const ln = doc.line(n);
+          const card = (n: number, first: boolean, last: boolean) => {
             let cls = "cm-lp-codeblock";
-            if (n === startLine) cls += " cm-lp-codeblock-first";
-            if (n === endLine) cls += " cm-lp-codeblock-last";
-            deco.push(Decoration.line({ class: cls }).range(ln.from));
-          }
-          if (!active) {
-            // Conceal the opening fence line; the closing fence line shows the
-            // language badge (bottom-right) or is concealed if no language.
+            if (first) cls += " cm-lp-codeblock-first";
+            if (last) cls += " cm-lp-codeblock-last";
+            deco.push(Decoration.line({ class: cls }).range(doc.line(n).from));
+          };
+          if (active) {
+            // Editing: the card spans every line, fences included.
+            for (let n = startLine; n <= endLine; n++) {
+              card(n, n === startLine, n === endLine);
+            }
+          } else {
+            // Rendered: the fence lines become bg-less GAP lines above/below the
+            // card (breathing room), and the card background covers only the
+            // code content lines.
             const openLine = doc.line(startLine);
             const o = concealMark.range(openLine.from, openLine.to);
             deco.push(o);
             atomic.push(o);
+            const codeStart = startLine + 1;
+            const codeEnd = endLine - 1;
+            for (let n = codeStart; n <= codeEnd; n++) {
+              card(n, n === codeStart, n === codeEnd);
+            }
             if (endLine > startLine) {
               const closeLine = doc.line(endLine);
               const close = lang

@@ -298,8 +298,8 @@ body {
   font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
   font-size: 0.9em;
   background: color-mix(in srgb, var(--fg) 5%, transparent);
-  padding-left: 16px;
-  padding-right: 16px;
+  padding-left: 24px;
+  padding-right: 20px;
 }
 
 .cm-lp-codeblock-first {
