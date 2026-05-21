@@ -35,6 +35,8 @@ export interface SearchOptions {
   query: string;
   replace: string;
   caseSensitive: boolean;
+  wholeWord?: boolean;
+  regexp?: boolean;
 }
 
 /**
@@ -315,6 +317,8 @@ export class EditorController {
       search: opts.query,
       replace: opts.replace,
       caseSensitive: opts.caseSensitive,
+      wholeWord: opts.wholeWord ?? false,
+      regexp: opts.regexp ?? false,
     });
     this.view.dispatch({ effects: setSearchQuery.of(query) });
     if (!query.valid) return null;

@@ -14,6 +14,8 @@ export class FindBar {
   private readonly input: HTMLInputElement;
   private readonly replaceInput: HTMLInputElement;
   private readonly caseToggle: HTMLButtonElement;
+  private readonly wordToggle: HTMLButtonElement;
+  private readonly regexToggle: HTMLButtonElement;
   private readonly countLabel: HTMLSpanElement;
   private open_ = false;
   private debounce: number | undefined;
@@ -37,6 +39,8 @@ export class FindBar {
         <input type="text" class="find-input" placeholder="Find" aria-label="Find" spellcheck="false" />
         <span class="find-count" aria-live="polite"></span>
         <button type="button" class="find-btn find-case" title="Match Case" aria-label="Match Case" aria-pressed="false">Aa</button>
+        <button type="button" class="find-btn find-word" title="Whole Word" aria-label="Whole Word" aria-pressed="false">W</button>
+        <button type="button" class="find-btn find-regex" title="Regular Expression" aria-label="Regular Expression" aria-pressed="false">.*</button>
         <button type="button" class="find-btn find-prev" title="Previous (⇧ return)" aria-label="Previous match">↑</button>
         <button type="button" class="find-btn find-next" title="Next (return)" aria-label="Next match">↓</button>
         <button type="button" class="find-btn find-close" title="Close (esc)" aria-label="Close">✕</button>
@@ -50,6 +54,8 @@ export class FindBar {
     this.input = this.q(".find-input");
     this.replaceInput = this.q(".find-replace");
     this.caseToggle = this.q(".find-case");
+    this.wordToggle = this.q(".find-word");
+    this.regexToggle = this.q(".find-regex");
     this.countLabel = this.q(".find-count");
 
     this.input.addEventListener("input", () => this.scheduleSearch());
@@ -63,12 +69,15 @@ export class FindBar {
       }
     });
 
-    this.caseToggle.addEventListener("click", () => {
-      const on = this.caseToggle.getAttribute("aria-pressed") !== "true";
-      this.caseToggle.setAttribute("aria-pressed", String(on));
-      this.caseToggle.classList.toggle("active", on);
-      this.runSearch();
-    });
+    for (const btn of [this.caseToggle, this.wordToggle, this.regexToggle]) {
+      btn.addEventListener("click", () => {
+        const on = btn.getAttribute("aria-pressed") !== "true";
+        btn.setAttribute("aria-pressed", String(on));
+        btn.classList.toggle("active", on);
+        this.input.focus();
+        this.runSearch();
+      });
+    }
     this.q(".find-next").addEventListener("click", () => this.next());
     this.q(".find-prev").addEventListener("click", () => this.prev());
     this.q(".find-close").addEventListener("click", () => this.close());
@@ -136,10 +145,13 @@ export class FindBar {
   }
 
   private runSearch(): void {
+    const on = (b: HTMLButtonElement) => b.getAttribute("aria-pressed") === "true";
     const count = this.editor.setSearch({
       query: this.input.value,
       replace: this.replaceInput.value,
-      caseSensitive: this.caseToggle.getAttribute("aria-pressed") === "true",
+      caseSensitive: on(this.caseToggle),
+      wholeWord: on(this.wordToggle),
+      regexp: on(this.regexToggle),
     });
     this.renderCount(count);
   }
