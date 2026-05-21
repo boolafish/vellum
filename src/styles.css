@@ -365,7 +365,8 @@ body {
 .cm-lp-hr-line {
   display: inline-block;
   width: 100%;
-  border-top: 1px solid var(--border);
+  /* A clearly visible divider (var(--border) is too faint against the bg). */
+  border-top: 1px solid color-mix(in srgb, var(--fg) 28%, transparent);
   vertical-align: middle;
 }
 

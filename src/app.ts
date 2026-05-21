@@ -51,11 +51,19 @@ export class App {
     await this.updateChrome();
   }
 
-  /** Open a ⌘-clicked link externally. Restricted to web URLs for safety. */
+  /** Open a ⌘-clicked link externally. Accepts http(s)/mailto; a bare domain
+   *  (e.g. example.com/x) is treated as https. Anything else is ignored for
+   *  safety (a placeholder like "xxxxx" won't open). */
   private async openLink(url: string): Promise<void> {
-    if (!/^https?:\/\//i.test(url)) return;
+    let target: string | null = null;
+    if (/^(https?|mailto):/i.test(url)) {
+      target = url;
+    } else if (/^[\w-]+(\.[\w-]+)+([/?#].*)?$/.test(url)) {
+      target = `https://${url}`; // bare domain like example.com/path
+    }
+    if (!target) return;
     try {
-      await openUrl(url);
+      await openUrl(target);
     } catch (err) {
       console.error("Could not open link:", err);
     }

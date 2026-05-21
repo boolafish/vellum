@@ -468,6 +468,29 @@ function buildDecorations(view: EditorView): LivePreviewDecos {
     atomic.push(r);
   };
 
+  // Conceal the delimiter marks of an inline construct UNLESS the selection
+  // touches that construct's own range (Typora-style: reveal `**` only when the
+  // cursor is in/at that bold span, not anywhere on the line). `markNames` are
+  // the delimiter child node names to hide.
+  const concealInlineMarks = (
+    node: SyntaxNodeRef,
+    markNames: ReadonlySet<string>,
+  ): void => {
+    if (overlapsSelection(view, node.from, node.to)) return; // cursor in span: show source
+    let child = node.node.firstChild;
+    while (child) {
+      if (markNames.has(child.name) && child.to > child.from) {
+        const r = concealMark.range(child.from, child.to);
+        deco.push(r);
+        atomic.push(r);
+      }
+      child = child.nextSibling;
+    }
+  };
+
+  const EMPHASIS_MARKS = new Set(["EmphasisMark", "StrikethroughMark"]);
+  const CODE_MARKS = new Set(["CodeMark"]);
+
   const tree = syntaxTree(state);
 
   for (const { from: vFrom, to: vTo } of view.visibleRanges) {
@@ -525,7 +548,9 @@ function buildDecorations(view: EditorView): LivePreviewDecos {
           return;
         }
 
-        // --- Strong / Emphasis / Strikethrough: style content, conceal marks ---
+        // --- Strong / Emphasis / Strikethrough: style content; conceal the
+        // delimiter marks unless the cursor is within THIS span (per-construct
+        // reveal, not whole-line). ---
         if (name === "StrongEmphasis" || name === "Emphasis" || name === "Strikethrough") {
           const cls =
             name === "StrongEmphasis"
@@ -534,33 +559,26 @@ function buildDecorations(view: EditorView): LivePreviewDecos {
                 ? "cm-lp-em"
                 : "cm-lp-strike";
           deco.push(Decoration.mark({ class: cls }).range(node.from, node.to));
-          return;
-        }
-        if (name === "EmphasisMark" || name === "StrikethroughMark") {
-          conceal(node.from, node.to);
+          concealInlineMarks(node, EMPHASIS_MARKS);
           return;
         }
 
-        // --- Inline code: chip style on content, conceal backticks ---
+        // --- Inline code: chip style on content; conceal backticks unless the
+        // cursor is within this code span. ---
         if (name === "InlineCode") {
           deco.push(Decoration.mark({ class: "cm-lp-code" }).range(node.from, node.to));
-          return;
-        }
-        if (name === "CodeMark") {
-          conceal(node.from, node.to);
+          concealInlineMarks(node, CODE_MARKS);
           return;
         }
 
-        // --- Links: style text, conceal `[` `]` `(url)` ---
+        // --- Links: style text, conceal `[` `]` `(url)` unless cursor in link ---
         if (name === "Link") {
-          const lineActiveHere = lineActive(node.from);
           // Style the visible link text (between the first `[` and `]`).
           let firstMarkEnd = -1;
           let secondMarkStart = -1;
           let secondMarkEnd = -1;
-          let urlEnd = node.to;
-          const child = node.node.firstChild;
-          let c = child;
+          const urlEnd = node.to;
+          let c = node.node.firstChild;
           const marks: { from: number; to: number }[] = [];
           while (c) {
             if (c.name === "LinkMark") marks.push({ from: c.from, to: c.to });
@@ -577,11 +595,18 @@ function buildDecorations(view: EditorView): LivePreviewDecos {
               Decoration.mark({ class: "cm-lp-link" }).range(firstMarkEnd, secondMarkStart),
             );
           }
-          if (!lineActiveHere && !overlapsSelection(view, node.from, node.to)) {
-            // Conceal `[`
-            if (marks.length >= 1) conceal(marks[0].from, marks[0].to);
-            // Conceal everything from `]` through the closing `)` (incl. URL).
-            if (marks.length >= 2) conceal(secondMarkStart, secondMarkEnd > urlEnd ? urlEnd : secondMarkEnd);
+          // Per-construct reveal: conceal the brackets/URL unless the cursor is
+          // within the link itself. Conceal unconditionally here (gate already
+          // checked) rather than via the line-based `conceal`.
+          if (!overlapsSelection(view, node.from, node.to)) {
+            const hide = (from: number, to: number) => {
+              if (to <= from) return;
+              const r = concealMark.range(from, to);
+              deco.push(r);
+              atomic.push(r);
+            };
+            if (marks.length >= 1) hide(marks[0].from, marks[0].to); // `[`
+            if (marks.length >= 2) hide(secondMarkStart, Math.min(secondMarkEnd, urlEnd)); // `]…)`
           }
           return;
         }
