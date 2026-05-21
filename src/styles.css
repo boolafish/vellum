@@ -298,20 +298,20 @@ body {
   font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
   font-size: 0.9em;
   background: color-mix(in srgb, var(--fg) 5%, transparent);
-  padding-left: 24px;
-  padding-right: 20px;
+  /* Generous left inset so code isn't glued to the card edge. */
+  padding-left: 32px;
+  padding-right: 24px;
 }
 
+/* Square corners (like Typora) and internal top/bottom padding. The first/last
+   lines are the concealed fences, so this padding reads as the card's breathing
+   room around the code; all lines share one background = one seamless block. */
 .cm-lp-codeblock-first {
-  border-top-left-radius: 8px;
-  border-top-right-radius: 8px;
-  padding-top: 10px;
+  padding-top: 12px;
 }
 
 .cm-lp-codeblock-last {
-  border-bottom-left-radius: 8px;
-  border-bottom-right-radius: 8px;
-  padding-bottom: 10px;
+  padding-bottom: 12px;
 }
 
 /* Language badge in the code block's bottom-right corner (replaces the closing

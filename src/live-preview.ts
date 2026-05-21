@@ -731,24 +731,18 @@ function buildDecorations(view: EditorView): LivePreviewDecos {
             if (last) cls += " cm-lp-codeblock-last";
             deco.push(Decoration.line({ class: cls }).range(doc.line(n).from));
           };
-          if (active) {
-            // Editing: the card spans every line, fences included.
-            for (let n = startLine; n <= endLine; n++) {
-              card(n, n === startLine, n === endLine);
-            }
-          } else {
-            // Rendered: the fence lines become bg-less GAP lines above/below the
-            // card (breathing room), and the card background covers only the
-            // code content lines.
+          // One cohesive card over EVERY line (no bg-less gaps). When the
+          // block isn't being edited, the opening fence becomes a blank padded
+          // top and the closing fence carries the language badge inside the
+          // card's bottom-right; when editing, the raw fences show.
+          for (let n = startLine; n <= endLine; n++) {
+            card(n, n === startLine, n === endLine);
+          }
+          if (!active) {
             const openLine = doc.line(startLine);
             const o = concealMark.range(openLine.from, openLine.to);
             deco.push(o);
             atomic.push(o);
-            const codeStart = startLine + 1;
-            const codeEnd = endLine - 1;
-            for (let n = codeStart; n <= codeEnd; n++) {
-              card(n, n === codeStart, n === codeEnd);
-            }
             if (endLine > startLine) {
               const closeLine = doc.line(endLine);
               const close = lang
