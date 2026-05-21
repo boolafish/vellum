@@ -36,6 +36,12 @@
   --accent-fg: #ffffff;
 
   --focus-ring: #2c8a7c;
+
+  /* Scrollbar thumb derives from --muted so it inherits each theme's hue
+     automatically — warm taupe on paper, cool slate on dark. Defined once;
+     --muted is what changes per theme. */
+  --scrollbar-thumb: color-mix(in srgb, var(--muted) 55%, transparent);
+  --scrollbar-thumb-hover: color-mix(in srgb, var(--muted) 85%, transparent);
 }
 
 /* Dark palette: applied when forced (data-theme="dark") or, in System mode
@@ -134,6 +140,7 @@ body {
   height: 100%;
   background: var(--bg);
   color: var(--fg);
+  position: relative; /* positioning context for the overlay scrollbar thumb */
 }
 
 .cm-editor.cm-focused {
@@ -604,4 +611,43 @@ body {
 .cm-lp-math-error {
   color: #cf222e;
   font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+}
+
+/* ============================================================================
+   SCROLLBARS
+   ----------------------------------------------------------------------------
+   The editor uses a custom overlay thumb (overlay-scrollbar.ts) so it can both
+   auto-hide and take a paper-tuned colour — neither of which native/WebKit
+   scrollbars do reliably. We hide the native editor scrollbar and float our own
+   <div> thumb over it. Colour comes from --scrollbar-thumb (derived from
+   --muted): warm taupe on paper, cool slate on dark. Other scrollers (tables,
+   modals) keep native scrollbars, themed by `color-scheme`.
+   ========================================================================= */
+.cm-scroller::-webkit-scrollbar {
+  display: none; /* hide native; our overlay thumb stands in */
+}
+
+.cm-overlay-scrollbar {
+  position: absolute;
+  top: 0;
+  right: 3px;
+  width: 6px;
+  height: 36px; /* sized by JS from scroll geometry */
+  border-radius: 999px;
+  background: var(--scrollbar-thumb);
+  opacity: 0;
+  pointer-events: auto;
+  cursor: default;
+  z-index: 5;
+  transition: opacity 0.4s ease, background-color 0.15s ease, width 0.12s ease;
+}
+
+.cm-overlay-scrollbar.visible {
+  opacity: 1;
+}
+
+.cm-overlay-scrollbar:hover,
+.cm-overlay-scrollbar.dragging {
+  width: 9px;
+  background: var(--scrollbar-thumb-hover);
 }

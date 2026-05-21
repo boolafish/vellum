@@ -30,6 +30,7 @@ import {
 } from "@codemirror/search";
 import { tags } from "@lezer/highlight";
 import { livePreview, setDocPath, docPathChanged } from "./live-preview";
+import { overlayScrollbar } from "./overlay-scrollbar";
 
 export interface SearchOptions {
   query: string;
@@ -222,6 +223,7 @@ export class EditorController {
           },
         }),
         livePreview(),
+        overlayScrollbar,
         // Search highlighter is registered AFTER live-preview so its marks
         // paint on top of the live-preview content styling.
         searchMatchHighlighter,
