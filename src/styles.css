@@ -398,6 +398,7 @@ body {
 
 .cm-lp-bullet {
   color: color-mix(in srgb, var(--fg) 72%, transparent);
+  font-size: 1.2em;
 }
 
 /* Blockquote: left bar + muted text via line decoration. */
@@ -434,9 +435,9 @@ body {
 }
 
 .cm-line.cm-lp-h1 {
-  padding-top: 0.3em;
-  padding-bottom: 0.2em;
-  border-bottom: 1px solid var(--border);
+  /* More breathing room around the title; no underline. */
+  padding-top: 1em;
+  padding-bottom: 0.25em;
 }
 
 /* Search-match highlight decorations (custom ViewPlugin in editor.ts). */
