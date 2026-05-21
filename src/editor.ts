@@ -52,8 +52,10 @@ export interface SearchOptions {
 // the nested language parser), so adding them gives code highlighting without
 // coloring prose. GitHub-ish light / VS Code-ish dark palettes.
 const lightHighlightStyle = HighlightStyle.define([
-  { tag: [tags.processingInstruction, tags.meta], color: "#bcbcbc" },
-  { tag: [tags.link, tags.url], color: "#2c8a7c" },
+  // Warm sepia-gray for concealed markdown markers so revealed syntax sits
+  // quietly on the cream paper rather than as a cold gray fleck.
+  { tag: [tags.processingInstruction, tags.meta], color: "#c0b49a" },
+  { tag: [tags.link, tags.url], color: "#2c8a7c" }, // = --accent (light)
   { tag: tags.keyword, color: "#cf222e" },
   { tag: [tags.string, tags.special(tags.string)], color: "#0a3069" },
   { tag: [tags.number, tags.bool, tags.null], color: "#0550ae" },
@@ -65,8 +67,8 @@ const lightHighlightStyle = HighlightStyle.define([
   { tag: tags.regexp, color: "#116329" },
 ]);
 const darkHighlightStyle = HighlightStyle.define([
-  { tag: [tags.processingInstruction, tags.meta], color: "#5c5c5c" },
-  { tag: [tags.link, tags.url], color: "#5cc2b4" },
+  { tag: [tags.processingInstruction, tags.meta], color: "#5c6470" },
+  { tag: [tags.link, tags.url], color: "#4db3a4" }, // = --accent (dark)
   { tag: tags.keyword, color: "#569cd6" },
   { tag: [tags.string, tags.special(tags.string)], color: "#ce9178" },
   { tag: [tags.number, tags.bool, tags.null], color: "#b5cea8" },
