@@ -314,6 +314,18 @@ body {
   padding-bottom: 10px;
 }
 
+/* Language badge in the code block's bottom-right corner (replaces the closing
+   ``` fence line when the block isn't being edited). */
+.cm-lp-lang {
+  float: right;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  font-size: 11px;
+  color: var(--muted);
+  background: color-mix(in srgb, var(--fg) 8%, transparent);
+  padding: 1px 7px;
+  border-radius: 5px;
+}
+
 .cm-lp-link {
   color: #2f6bff;
   text-decoration: underline;

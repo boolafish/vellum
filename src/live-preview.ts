@@ -296,6 +296,23 @@ class MathWidget extends WidgetType {
   }
 }
 
+/** Small language label shown in the corner of a code block (replaces the
+ *  closing ``` fence line when the block isn't being edited). */
+class LangBadgeWidget extends WidgetType {
+  constructor(readonly lang: string) {
+    super();
+  }
+  eq(other: LangBadgeWidget): boolean {
+    return other.lang === this.lang;
+  }
+  toDOM(): HTMLElement {
+    const span = document.createElement("span");
+    span.className = "cm-lp-lang";
+    span.textContent = this.lang;
+    return span;
+  }
+}
+
 const concealMark = Decoration.replace({});
 const bulletDeco = Decoration.replace({ widget: new BulletWidget() });
 const ruleDeco = Decoration.replace({ widget: new RuleWidget() });
@@ -657,17 +674,50 @@ function buildDecorations(view: EditorView): LivePreviewDecos {
           return;
         }
 
-        // --- Fenced code: monospace block; round the first/last lines so it
-        // reads as one padded card (Typora-style) rather than a flat band. ---
+        // --- Fenced code: monospace card. When the block isn't being edited,
+        // hide the ``` fence lines and show the language as a corner badge
+        // (Typora-style); reveal the raw fences when the cursor is inside. ---
         if (name === "FencedCode") {
           const startLine = doc.lineAt(node.from).number;
           const endLine = doc.lineAt(node.to).number;
+          let active = false;
+          for (let n = startLine; n <= endLine; n++) {
+            if (activeLines.has(n)) {
+              active = true;
+              break;
+            }
+          }
+          let lang = "";
+          let cc = node.node.firstChild;
+          while (cc) {
+            if (cc.name === "CodeInfo") lang = doc.sliceString(cc.from, cc.to).trim();
+            cc = cc.nextSibling;
+          }
           for (let n = startLine; n <= endLine; n++) {
             const ln = doc.line(n);
             let cls = "cm-lp-codeblock";
             if (n === startLine) cls += " cm-lp-codeblock-first";
             if (n === endLine) cls += " cm-lp-codeblock-last";
             deco.push(Decoration.line({ class: cls }).range(ln.from));
+          }
+          if (!active) {
+            // Conceal the opening fence line; the closing fence line shows the
+            // language badge (bottom-right) or is concealed if no language.
+            const openLine = doc.line(startLine);
+            const o = concealMark.range(openLine.from, openLine.to);
+            deco.push(o);
+            atomic.push(o);
+            if (endLine > startLine) {
+              const closeLine = doc.line(endLine);
+              const close = lang
+                ? Decoration.replace({ widget: new LangBadgeWidget(lang) }).range(
+                    closeLine.from,
+                    closeLine.to,
+                  )
+                : concealMark.range(closeLine.from, closeLine.to);
+              deco.push(close);
+              atomic.push(close);
+            }
           }
           return;
         }
