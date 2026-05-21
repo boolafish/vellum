@@ -50,7 +50,7 @@ export interface SearchOptions {
 // coloring prose. GitHub-ish light / VS Code-ish dark palettes.
 const lightHighlightStyle = HighlightStyle.define([
   { tag: [tags.processingInstruction, tags.meta], color: "#bcbcbc" },
-  { tag: [tags.link, tags.url], color: "#3a6db3" },
+  { tag: [tags.link, tags.url], color: "#2c8a7c" },
   { tag: tags.keyword, color: "#cf222e" },
   { tag: [tags.string, tags.special(tags.string)], color: "#0a3069" },
   { tag: [tags.number, tags.bool, tags.null], color: "#0550ae" },
@@ -63,7 +63,7 @@ const lightHighlightStyle = HighlightStyle.define([
 ]);
 const darkHighlightStyle = HighlightStyle.define([
   { tag: [tags.processingInstruction, tags.meta], color: "#5c5c5c" },
-  { tag: [tags.link, tags.url], color: "#85b0e6" },
+  { tag: [tags.link, tags.url], color: "#5cc2b4" },
   { tag: tags.keyword, color: "#569cd6" },
   { tag: [tags.string, tags.special(tags.string)], color: "#ce9178" },
   { tag: [tags.number, tags.bool, tags.null], color: "#b5cea8" },

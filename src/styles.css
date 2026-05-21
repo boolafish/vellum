@@ -321,8 +321,12 @@ body {
 
 /* Language badge in the code block's bottom-right corner (replaces the closing
    ``` fence line when the block isn't being edited). */
+.cm-content .cm-line.cm-lp-badge-line {
+  text-align: right;
+}
+
 .cm-lp-lang {
-  float: right;
+  display: inline-block;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
   font-size: 11px;
   color: var(--muted);
@@ -332,18 +336,18 @@ body {
 }
 
 .cm-lp-link {
-  color: #3a6db3;
+  color: #2c8a7c;
   text-decoration: underline;
   text-underline-offset: 2px;
 }
 
 :root[data-theme="dark"] .cm-lp-link {
-  color: #85b0e6;
+  color: #5cc2b4;
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme]) .cm-lp-link {
-    color: #85b0e6;
+    color: #5cc2b4;
   }
 }
 
@@ -356,11 +360,12 @@ body {
   border-radius: 3px;
   vertical-align: -0.15em;
   position: relative;
+  cursor: pointer;
 }
 
 .cm-lp-checkbox.checked {
-  background: #3a6db3;
-  border-color: #3a6db3;
+  background: #2c8a7c;
+  border-color: #2c8a7c;
 }
 
 .cm-lp-checkbox.checked::after {

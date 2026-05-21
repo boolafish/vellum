@@ -71,17 +71,29 @@ class BulletWidget extends WidgetType {
   }
 }
 
-/** Renders a GFM task marker (`[ ]`/`[x]`) as a square checkbox. */
+/** Renders a GFM task marker (`[ ]`/`[x]`) as a square checkbox. Clicking it
+ *  toggles the marker in the source (same length, so positions stay valid). */
 class CheckboxWidget extends WidgetType {
-  constructor(readonly checked: boolean) {
+  constructor(
+    readonly checked: boolean,
+    readonly from: number,
+    readonly to: number,
+  ) {
     super();
   }
   eq(other: CheckboxWidget): boolean {
-    return other.checked === this.checked;
+    return other.checked === this.checked && other.from === this.from && other.to === this.to;
   }
-  toDOM(): HTMLElement {
+  toDOM(view: EditorView): HTMLElement {
     const span = document.createElement("span");
     span.className = this.checked ? "cm-lp-checkbox checked" : "cm-lp-checkbox";
+    span.addEventListener("mousedown", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      view.dispatch({
+        changes: { from: this.from, to: this.to, insert: this.checked ? "[ ]" : "[x]" },
+      });
+    });
     return span;
   }
   ignoreEvent(): boolean {
@@ -715,10 +727,9 @@ function buildDecorations(view: EditorView): LivePreviewDecos {
         if (name === "TaskMarker") {
           if (lineActive(node.from) || overlapsSelection(view, node.from, node.to)) return;
           const checked = /[xX]/.test(doc.sliceString(node.from, node.to));
-          const w = Decoration.replace({ widget: new CheckboxWidget(checked) }).range(
-            node.from,
-            node.to,
-          );
+          const w = Decoration.replace({
+            widget: new CheckboxWidget(checked, node.from, node.to),
+          }).range(node.from, node.to);
           deco.push(w);
           atomic.push(w);
           return;
@@ -782,14 +793,19 @@ function buildDecorations(view: EditorView): LivePreviewDecos {
             atomic.push(o);
             if (endLine > startLine) {
               const closeLine = doc.line(endLine);
-              const close = lang
-                ? Decoration.replace({ widget: new LangBadgeWidget(lang) }).range(
+              if (lang) {
+                deco.push(
+                  Decoration.replace({ widget: new LangBadgeWidget(lang) }).range(
                     closeLine.from,
                     closeLine.to,
-                  )
-                : concealMark.range(closeLine.from, closeLine.to);
-              deco.push(close);
-              atomic.push(close);
+                  ),
+                );
+                // Right-align the badge line so the label sits bottom-right.
+                deco.push(Decoration.line({ class: "cm-lp-badge-line" }).range(closeLine.from));
+              } else {
+                deco.push(concealMark.range(closeLine.from, closeLine.to));
+              }
+              atomic.push(concealMark.range(closeLine.from, closeLine.to));
             }
           }
           return;
