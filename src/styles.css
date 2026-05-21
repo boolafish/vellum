@@ -201,29 +201,25 @@ body {
   background: #2559d6;
 }
 
-/* Find / Replace bar — pinned top-right of the editor, modal aesthetic. */
+/* Find / Replace bar — full-width strip at the top of the editor area, in the
+   layout flow (pushes content down, no overlap). Collapsed to the Find row;
+   the expand chevron reveals the Replace row. */
 /* More specific than `.hidden` (which it would otherwise override by order). */
 .find-bar.hidden {
   display: none;
 }
 
 .find-bar {
-  position: fixed;
-  top: calc(var(--toolbar-h) + 10px);
-  right: 16px;
-  z-index: 900;
+  flex: 0 0 auto;
+  box-sizing: border-box;
+  width: 100%;
   display: flex;
   flex-direction: column;
   gap: 6px;
-  padding: 10px;
-  width: 540px;
-  max-width: calc(100vw - 32px);
-  border-radius: 10px;
+  padding: 8px 14px;
   background: var(--bg);
   color: var(--fg);
-  box-shadow:
-    0 8px 28px rgba(0, 0, 0, 0.25),
-    0 0 0 1px var(--border);
+  border-bottom: 1px solid var(--border);
   font-size: 13px;
 }
 
@@ -231,6 +227,35 @@ body {
   display: flex;
   align-items: center;
   gap: 6px;
+}
+
+/* Replace row hidden until expanded; indented to align under the Find input
+   (past the chevron). */
+.find-row-replace {
+  display: none;
+  padding-left: 30px;
+}
+
+.find-bar.expanded .find-row-replace {
+  display: flex;
+}
+
+.find-expand {
+  flex: 0 0 auto;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+  border-radius: 6px;
+}
+
+.find-expand:hover {
+  background: color-mix(in srgb, var(--fg) 10%, transparent);
 }
 
 .find-input,

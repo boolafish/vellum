@@ -3,11 +3,12 @@ import type { EditorController } from "./editor";
 const DEBOUNCE_MS = 120;
 
 /**
- * Native-feeling Find / Find & Replace bar pinned to the top-right of the
- * editor. Drives the editor's search (CodeMirror) via the EditorController.
- * Typing updates the live highlight (debounced); Enter → next, Shift+Enter →
- * prev, Esc → close + clear. Only the query/highlight state lives in the
- * editor — this class owns the overlay DOM and the current query inputs.
+ * Typora-style Find / Replace bar: a full-width strip inserted at the top of
+ * the editor area (in the layout flow, so it pushes content down instead of
+ * overlapping it). Collapsed to just the Find row by default; an expand chevron
+ * reveals the Replace row. Drives the editor's search via the EditorController:
+ * typing updates the live highlight (debounced); Enter → next, Shift+Enter →
+ * prev, Esc → close + clear.
  */
 export class FindBar {
   private readonly el: HTMLDivElement;
@@ -16,8 +17,10 @@ export class FindBar {
   private readonly caseToggle: HTMLButtonElement;
   private readonly wordToggle: HTMLButtonElement;
   private readonly regexToggle: HTMLButtonElement;
+  private readonly expandBtn: HTMLButtonElement;
   private readonly countLabel: HTMLSpanElement;
   private open_ = false;
+  private expanded = false;
   private debounce: number | undefined;
   // Closes on Esc even when focus is in the editor (not just inside the bar).
   private readonly onWindowKey = (e: KeyboardEvent) => {
@@ -27,15 +30,13 @@ export class FindBar {
     }
   };
 
-  constructor(
-    private readonly editor: EditorController,
-    private readonly host: HTMLElement = document.body,
-  ) {
+  constructor(private readonly editor: EditorController) {
     this.el = document.createElement("div");
     this.el.className = "find-bar hidden";
     this.el.setAttribute("role", "search");
     this.el.innerHTML = `
-      <div class="find-row">
+      <div class="find-row find-row-main">
+        <button type="button" class="find-expand" title="Toggle Replace" aria-label="Toggle Replace" aria-expanded="false">›</button>
         <input type="text" class="find-input" placeholder="Find" aria-label="Find" spellcheck="false" />
         <span class="find-count" aria-live="polite"></span>
         <button type="button" class="find-btn find-case" title="Match Case" aria-label="Match Case" aria-pressed="false">Aa</button>
@@ -45,7 +46,7 @@ export class FindBar {
         <button type="button" class="find-btn find-next" title="Next (return)" aria-label="Next match">↓</button>
         <button type="button" class="find-btn find-close" title="Close (esc)" aria-label="Close">✕</button>
       </div>
-      <div class="find-row">
+      <div class="find-row find-row-replace">
         <input type="text" class="find-replace" placeholder="Replace" aria-label="Replace" spellcheck="false" />
         <button type="button" class="find-btn find-replace-one">Replace</button>
         <button type="button" class="find-btn find-replace-all">All</button>
@@ -56,6 +57,7 @@ export class FindBar {
     this.caseToggle = this.q(".find-case");
     this.wordToggle = this.q(".find-word");
     this.regexToggle = this.q(".find-regex");
+    this.expandBtn = this.q(".find-expand");
     this.countLabel = this.q(".find-count");
 
     this.input.addEventListener("input", () => this.scheduleSearch());
@@ -78,13 +80,18 @@ export class FindBar {
         this.runSearch();
       });
     }
+    this.expandBtn.addEventListener("click", () => this.setExpanded(!this.expanded));
     this.q(".find-next").addEventListener("click", () => this.next());
     this.q(".find-prev").addEventListener("click", () => this.prev());
     this.q(".find-close").addEventListener("click", () => this.close());
     this.q(".find-replace-one").addEventListener("click", () => this.replaceOne());
     this.q(".find-replace-all").addEventListener("click", () => this.replaceAll());
 
-    this.host.appendChild(this.el);
+    // Insert at the top of the editor area so the bar pushes content down.
+    const app = document.getElementById("app");
+    const editorEl = document.getElementById("editor");
+    if (app && editorEl) app.insertBefore(this.el, editorEl);
+    else document.body.appendChild(this.el);
   }
 
   private q<T extends HTMLElement>(sel: string): T {
@@ -94,6 +101,14 @@ export class FindBar {
   toggle(): void {
     if (this.open_) this.close();
     else this.open();
+  }
+
+  private setExpanded(expanded: boolean): void {
+    this.expanded = expanded;
+    this.el.classList.toggle("expanded", expanded);
+    this.expandBtn.setAttribute("aria-expanded", String(expanded));
+    this.expandBtn.textContent = expanded ? "⌄" : "›";
+    (expanded ? this.replaceInput : this.input).focus();
   }
 
   open(): void {
