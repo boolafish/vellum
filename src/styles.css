@@ -298,19 +298,24 @@ body {
   font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
   font-size: 0.9em;
   background: color-mix(in srgb, var(--fg) 5%, transparent);
-  /* Generous left inset so code isn't glued to the card edge. */
+}
+
+/* Generous left inset so code isn't glued to the card edge. Higher specificity
+   (.cm-content .cm-line…) is required to beat CodeMirror's own .cm-line padding,
+   which is injected at runtime and would otherwise win. */
+.cm-content .cm-line.cm-lp-codeblock {
   padding-left: 32px;
   padding-right: 24px;
 }
 
-/* Square corners (like Typora) and internal top/bottom padding. The first/last
-   lines are the concealed fences, so this padding reads as the card's breathing
-   room around the code; all lines share one background = one seamless block. */
-.cm-lp-codeblock-first {
+/* Square corners (like Typora) + internal top/bottom padding. The first/last
+   lines are the concealed fences, so this padding is the card's breathing room;
+   all lines share one background = one seamless block. */
+.cm-content .cm-line.cm-lp-codeblock-first {
   padding-top: 12px;
 }
 
-.cm-lp-codeblock-last {
+.cm-content .cm-line.cm-lp-codeblock-last {
   padding-bottom: 12px;
 }
 
@@ -327,19 +332,47 @@ body {
 }
 
 .cm-lp-link {
-  color: #2f6bff;
+  color: #3a6db3;
   text-decoration: underline;
   text-underline-offset: 2px;
 }
 
 :root[data-theme="dark"] .cm-lp-link {
-  color: #4da6ff;
+  color: #85b0e6;
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme]) .cm-lp-link {
-    color: #4da6ff;
+    color: #85b0e6;
   }
+}
+
+/* GFM task checkbox (replaces `[ ]`/`[x]` when the line isn't being edited). */
+.cm-lp-checkbox {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  border: 1.5px solid var(--muted);
+  border-radius: 3px;
+  vertical-align: -0.15em;
+  position: relative;
+}
+
+.cm-lp-checkbox.checked {
+  background: #3a6db3;
+  border-color: #3a6db3;
+}
+
+.cm-lp-checkbox.checked::after {
+  content: "";
+  position: absolute;
+  left: 0.32em;
+  top: 0.1em;
+  width: 0.22em;
+  height: 0.45em;
+  border: solid #fff;
+  border-width: 0 1.5px 1.5px 0;
+  transform: rotate(45deg);
 }
 
 /* List item lines: breathing room between items + a hanging indent so wrapped
@@ -427,7 +460,8 @@ body {
 
 .cm-lp-table th,
 .cm-lp-table td {
-  border: 1px solid var(--border);
+  /* Softer, more defined border than --border (Typora-like); no zebra rows. */
+  border: 1px solid color-mix(in srgb, var(--fg) 18%, transparent);
   padding: 6px 13px;
   text-align: left;
 }
@@ -435,10 +469,6 @@ body {
 .cm-lp-table th {
   font-weight: 600;
   background: color-mix(in srgb, var(--fg) 5%, transparent);
-}
-
-.cm-lp-table tbody tr:nth-child(even) td {
-  background: color-mix(in srgb, var(--fg) 2.5%, transparent);
 }
 
 /* ---- Rendered images (block / inline widgets) ---- */

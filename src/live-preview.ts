@@ -63,7 +63,25 @@ class BulletWidget extends WidgetType {
   toDOM(): HTMLElement {
     const span = document.createElement("span");
     span.className = "cm-lp-bullet";
-    span.textContent = "•";
+    span.textContent = "▪"; // square bullet (Typora-style)
+    return span;
+  }
+  ignoreEvent(): boolean {
+    return false;
+  }
+}
+
+/** Renders a GFM task marker (`[ ]`/`[x]`) as a square checkbox. */
+class CheckboxWidget extends WidgetType {
+  constructor(readonly checked: boolean) {
+    super();
+  }
+  eq(other: CheckboxWidget): boolean {
+    return other.checked === this.checked;
+  }
+  toDOM(): HTMLElement {
+    const span = document.createElement("span");
+    span.className = this.checked ? "cm-lp-checkbox checked" : "cm-lp-checkbox";
     return span;
   }
   ignoreEvent(): boolean {
@@ -671,19 +689,38 @@ function buildDecorations(view: EditorView): LivePreviewDecos {
         // --- List markers ---
         if (name === "ListMark") {
           const text = doc.sliceString(node.from, node.to);
-          deco.push(
-            Decoration.mark({ class: "cm-lp-listmark" }).range(node.from, node.to),
-          );
-          // Render unordered bullets as • when inactive.
-          if (
-            (text === "-" || text === "*" || text === "+") &&
-            !lineActive(node.from) &&
-            !overlapsSelection(view, node.from, node.to)
-          ) {
+          // Task items (`- [ ] …`) get a checkbox instead of a bullet, so hide
+          // the dash and let the TaskMarker render the box.
+          const isTask = /^\s*[-*+]\s+\[[ xX]\]/.test(doc.lineAt(node.from).text);
+          const hidden = !lineActive(node.from) && !overlapsSelection(view, node.from, node.to);
+          if (isTask) {
+            if (hidden) {
+              const r = concealMark.range(node.from, node.to);
+              deco.push(r);
+              atomic.push(r);
+            }
+            return;
+          }
+          deco.push(Decoration.mark({ class: "cm-lp-listmark" }).range(node.from, node.to));
+          // Render unordered bullets as a square when inactive.
+          if ((text === "-" || text === "*" || text === "+") && hidden) {
             const b = bulletDeco.range(node.from, node.to);
             deco.push(b);
             atomic.push(b);
           }
+          return;
+        }
+
+        // --- Task checkbox: render the `[ ]`/`[x]` marker as a square box ---
+        if (name === "TaskMarker") {
+          if (lineActive(node.from) || overlapsSelection(view, node.from, node.to)) return;
+          const checked = /[xX]/.test(doc.sliceString(node.from, node.to));
+          const w = Decoration.replace({ widget: new CheckboxWidget(checked) }).range(
+            node.from,
+            node.to,
+          );
+          deco.push(w);
+          atomic.push(w);
           return;
         }
 
