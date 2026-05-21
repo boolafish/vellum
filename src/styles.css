@@ -334,9 +334,10 @@ body {
    continuation text aligns under the item text rather than the left margin.
    (padding/text-indent are safe for CodeMirror's position math; margin is not.) */
 .cm-line.cm-lp-li {
-  padding-top: 0.4em;
+  padding-top: 0.6em;
   padding-left: 1.7em;
   text-indent: -1.7em;
+  line-height: 1.85;
 }
 
 /* List markers should be clearly readable (Typora shows real numbers/bullets),

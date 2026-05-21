@@ -14,7 +14,7 @@ import {
   undo as cmUndo,
   redo as cmRedo,
 } from "@codemirror/commands";
-import { syntaxHighlighting, HighlightStyle } from "@codemirror/language";
+import { syntaxHighlighting, HighlightStyle, syntaxTree } from "@codemirror/language";
 import { markdown } from "@codemirror/lang-markdown";
 import {
   SearchQuery,
@@ -114,9 +114,30 @@ const searchMatchHighlighter = ViewPlugin.fromClass(
  * the document via setState (preserving theme + zoom), and round-trips are
  * byte-faithful (getMarkdown() returns the exact document text).
  */
+/** Resolve the URL of a markdown link at `pos`, or null if there isn't one. */
+function linkUrlAt(view: EditorView, pos: number): string | null {
+  let node: ReturnType<typeof syntaxTree>["topNode"] | null = syntaxTree(view.state).resolveInner(
+    pos,
+    1,
+  );
+  while (node) {
+    if (node.name === "Link" || node.name === "Image") {
+      let child = node.firstChild;
+      while (child) {
+        if (child.name === "URL") return view.state.doc.sliceString(child.from, child.to).trim();
+        child = child.nextSibling;
+      }
+      return null;
+    }
+    node = node.parent;
+  }
+  return null;
+}
+
 export class EditorController {
   private readonly view: EditorView;
   private changeCb: () => void = () => {};
+  private linkCb: (url: string) => void = () => {};
   private loading = false;
   private dark = false;
   private fontLevel = 1;
@@ -150,6 +171,19 @@ export class EditorController {
         ),
         this.fontCompartment.of(this.fontTheme(this.fontLevel)),
         typographyTheme,
+        // ⌘/Ctrl-click a link to open it externally (app validates the scheme).
+        EditorView.domEventHandlers({
+          mousedown: (event, view) => {
+            if (!event.metaKey && !event.ctrlKey) return false;
+            const pos = view.posAtCoords({ x: event.clientX, y: event.clientY });
+            if (pos == null) return false;
+            const url = linkUrlAt(view, pos);
+            if (!url) return false;
+            event.preventDefault();
+            this.linkCb(url);
+            return true;
+          },
+        }),
         livePreview(),
         // Search highlighter is registered AFTER live-preview so its marks
         // paint on top of the live-preview content styling.
@@ -168,6 +202,11 @@ export class EditorController {
   /** Fired on every user edit (not on programmatic load()). */
   onChange(cb: () => void): void {
     this.changeCb = cb;
+  }
+
+  /** Fired when the user ⌘/Ctrl-clicks a link; receives the raw URL. */
+  onOpenLink(cb: (url: string) => void): void {
+    this.linkCb = cb;
   }
 
   async load(content: string): Promise<void> {

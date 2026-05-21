@@ -2,6 +2,7 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { listen } from "@tauri-apps/api/event";
 import { invoke } from "@tauri-apps/api/core";
 import { message } from "@tauri-apps/plugin-dialog";
+import { openUrl } from "@tauri-apps/plugin-opener";
 
 import { EditorController } from "./editor";
 import { FindBar } from "./find";
@@ -43,10 +44,21 @@ export class App {
   async start(): Promise<void> {
     theme.init(this.editor);
     this.editor.onChange(() => this.setDirty(true));
+    this.editor.onOpenLink((url) => void this.openLink(url));
     const launchFiles = await this.wireNativeIntegrations();
     await this.applyStoredTheme();
     await this.openInitialDoc(launchFiles);
     await this.updateChrome();
+  }
+
+  /** Open a ⌘-clicked link externally. Restricted to web URLs for safety. */
+  private async openLink(url: string): Promise<void> {
+    if (!/^https?:\/\//i.test(url)) return;
+    try {
+      await openUrl(url);
+    } catch (err) {
+      console.error("Could not open link:", err);
+    }
   }
 
   private async applyStoredTheme(): Promise<void> {
