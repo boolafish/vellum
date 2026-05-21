@@ -185,6 +185,14 @@ function buildDecorations(view: EditorView): LivePreviewDecos {
           return;
         }
 
+        // --- List item line: enables inter-item spacing + hanging indent so
+        // wrapped continuation text aligns under the item text (not the margin).
+        if (name === "ListItem") {
+          const line = doc.lineAt(node.from);
+          deco.push(Decoration.line({ class: "cm-lp-li" }).range(line.from));
+          return;
+        }
+
         // --- List markers ---
         if (name === "ListMark") {
           const text = doc.sliceString(node.from, node.to);
@@ -223,13 +231,17 @@ function buildDecorations(view: EditorView): LivePreviewDecos {
           return;
         }
 
-        // --- Fenced code: monospace the whole block (incl. fences) ---
+        // --- Fenced code: monospace block; round the first/last lines so it
+        // reads as one padded card (Typora-style) rather than a flat band. ---
         if (name === "FencedCode") {
           const startLine = doc.lineAt(node.from).number;
           const endLine = doc.lineAt(node.to).number;
           for (let n = startLine; n <= endLine; n++) {
             const ln = doc.line(n);
-            deco.push(Decoration.line({ class: "cm-lp-codeblock" }).range(ln.from));
+            let cls = "cm-lp-codeblock";
+            if (n === startLine) cls += " cm-lp-codeblock-first";
+            if (n === endLine) cls += " cm-lp-codeblock-last";
+            deco.push(Decoration.line({ class: cls }).range(ln.from));
           }
           return;
         }

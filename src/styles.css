@@ -292,12 +292,26 @@ body {
   padding: 0.1em 0.35em;
 }
 
-/* Fenced code blocks stay monospace (line decoration over the whole block,
-   fences included). */
+/* Fenced code blocks: monospace, with horizontal padding and rounded top/bottom
+   so the stacked line-backgrounds read as one padded card. */
 .cm-lp-codeblock {
   font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
   font-size: 0.9em;
-  background: color-mix(in srgb, var(--fg) 4%, transparent);
+  background: color-mix(in srgb, var(--fg) 5%, transparent);
+  padding-left: 16px;
+  padding-right: 16px;
+}
+
+.cm-lp-codeblock-first {
+  border-top-left-radius: 8px;
+  border-top-right-radius: 8px;
+  padding-top: 10px;
+}
+
+.cm-lp-codeblock-last {
+  border-bottom-left-radius: 8px;
+  border-bottom-right-radius: 8px;
+  padding-bottom: 10px;
 }
 
 .cm-lp-link {
@@ -316,12 +330,23 @@ body {
   }
 }
 
+/* List item lines: breathing room between items + a hanging indent so wrapped
+   continuation text aligns under the item text rather than the left margin.
+   (padding/text-indent are safe for CodeMirror's position math; margin is not.) */
+.cm-line.cm-lp-li {
+  padding-top: 0.4em;
+  padding-left: 1.7em;
+  text-indent: -1.7em;
+}
+
+/* List markers should be clearly readable (Typora shows real numbers/bullets),
+   not the faint marker-gray used for syntax punctuation. */
 .cm-lp-listmark {
-  color: var(--muted);
+  color: color-mix(in srgb, var(--fg) 72%, transparent);
 }
 
 .cm-lp-bullet {
-  color: var(--muted);
+  color: color-mix(in srgb, var(--fg) 72%, transparent);
 }
 
 /* Blockquote: left bar + muted text via line decoration. */
