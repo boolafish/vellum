@@ -24,7 +24,7 @@ jobs:
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@stable
         with:
-          targets: aarch64-apple-darwin
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
 
       - name: Cache cargo
         uses: swatinem/rust-cache@v2
@@ -44,4 +44,4 @@ jobs:
           releaseBody: "See the assets below to download and install. Note: this build is unsigned and not notarized — macOS Gatekeeper will warn on first open (right-click → Open)."
           releaseDraft: true
           prerelease: false
-          args: --target aarch64-apple-darwin
+          args: --target universal-apple-darwin # one bundle for both Intel and Apple Silicon

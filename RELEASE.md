@@ -10,7 +10,20 @@ npm run tauri build
 Outputs (under `src-tauri/target/release/bundle/`):
 
 - `macos/Vellum.app` — the application bundle
-- `dmg/Vellum_<version>_aarch64.dmg` — drag-to-Applications installer
+- `dmg/Vellum_<version>_<arch>.dmg` — drag-to-Applications installer
+
+A plain `npm run tauri build` targets the host architecture only. For a single
+installer that runs natively on both Intel and Apple Silicon, build a universal
+binary (this is what CI ships):
+
+```bash
+rustup target add aarch64-apple-darwin x86_64-apple-darwin
+npm run tauri build -- --target universal-apple-darwin
+# → dmg/Vellum_<version>_universal.dmg
+```
+
+Releases are produced automatically by `.github/workflows/release.yml` when a
+`vX.Y.Z` tag is pushed (universal binary, published as a draft release).
 
 The release profile is size-optimized (`opt-level = "s"`, LTO, stripped) — see
 `src-tauri/Cargo.toml`. The resulting `.app` is ~5.4 MB (vs ~100 MB+ for an
