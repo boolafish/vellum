@@ -54,6 +54,19 @@ const darkHighlightStyle = HighlightStyle.define([
 const baseLightTheme = EditorView.theme({}, { dark: false });
 const baseDarkTheme = EditorView.theme({}, { dark: true });
 
+// Force a proportional reading font on the content (CM defaults to monospace
+// and its specificity beats a plain .cm-scroller rule). Code is re-monospaced
+// by the live-preview .cm-lp-code/.cm-lp-codeblock classes, which win on their
+// own spans. Also centers the column reliably via the scroller's flex layout.
+const typographyTheme = EditorView.theme({
+  ".cm-content": {
+    fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif",
+  },
+  ".cm-scroller": {
+    justifyContent: "center",
+  },
+});
+
 /**
  * ViewPlugin that decorates matches of the active search query in the visible
  * viewport. @codemirror/search only paints matches while ITS panel is open
@@ -136,6 +149,7 @@ export class EditorController {
             : syntaxHighlighting(lightHighlightStyle, { fallback: true }),
         ),
         this.fontCompartment.of(this.fontTheme(this.fontLevel)),
+        typographyTheme,
         livePreview(),
         // Search highlighter is registered AFTER live-preview so its marks
         // paint on top of the live-preview content styling.
