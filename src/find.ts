@@ -172,9 +172,7 @@ export class FindBar {
   }
 
   private renderCount(count: number | null): void {
-    if (!this.input.value) {
-      this.countLabel.textContent = "";
-    } else if (count === null) {
+    if (!this.input.value || count === null) {
       this.countLabel.textContent = "";
     } else if (count === 0) {
       this.countLabel.textContent = "0";

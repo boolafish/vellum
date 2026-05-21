@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "MD Editor",
+  "productName": "Vellum",
   "version": "0.1.0",
-  "identifier": "com.mdeditor.app",
+  "identifier": "com.vellum.editor",
   "build": {
     "frontendDist": "../dist",
     "devUrl": "http://localhost:1420",
@@ -13,7 +13,7 @@
     "macOSPrivateApi": true,
     "windows": [
       {
-        "title": "MD Editor",
+        "title": "Vellum",
         "width": 900,
         "height": 680,
         "minWidth": 480,
@@ -35,9 +35,9 @@
     "active": true,
     "targets": ["app", "dmg"],
     "category": "public.app-category.productivity",
-    "copyright": "© 2026 MD Editor",
-    "shortDescription": "A lightweight, fast markdown editor",
-    "longDescription": "A lightweight, fast Typora-style markdown editor for macOS built with Tauri and Milkdown.",
+    "copyright": "© 2026 Vellum",
+    "shortDescription": "A lightweight, fast Markdown editor",
+    "longDescription": "A lightweight, fast Markdown editor for macOS built with Tauri.",
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",

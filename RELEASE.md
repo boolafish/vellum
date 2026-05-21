@@ -9,8 +9,8 @@ npm run tauri build
 
 Outputs (under `src-tauri/target/release/bundle/`):
 
-- `macos/MD Editor.app` — the application bundle
-- `dmg/MD Editor_<version>_aarch64.dmg` — drag-to-Applications installer
+- `macos/Vellum.app` — the application bundle
+- `dmg/Vellum_<version>_aarch64.dmg` — drag-to-Applications installer
 
 The release profile is size-optimized (`opt-level = "s"`, LTO, stripped) — see
 `src-tauri/Cargo.toml`. The resulting `.app` is ~5.4 MB (vs ~100 MB+ for an
@@ -47,7 +47,7 @@ Steps:
    certificate.
 2. Set the env vars above; Tauri signs the `.app` and submits to Apple's
    notary service automatically, then staples the ticket.
-3. Verify: `spctl -a -vvv "MD Editor.app"` should report `accepted / Notarized`.
+3. Verify: `spctl -a -vvv "Vellum.app"` should report `accepted / Notarized`.
 
 References: Tauri macOS code-signing docs (`v2.tauri.app` → Distribute → macOS).
 

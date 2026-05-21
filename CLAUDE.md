@@ -1,6 +1,6 @@
-# MD Editor
+# Vellum
 
-A lightweight, fast, Mac-only Typora-style markdown editor. **Tauri 2** (Rust +
+A lightweight, fast, Mac-only Markdown editor. **Tauri 2** (Rust +
 WKWebView) shell, **CodeMirror 6** editor (source mode: syntax-highlighted
 markdown), vanilla TypeScript + Vite frontend. Single-window, document-centric.
 
@@ -28,6 +28,14 @@ npm run tauri build    # release .app + .dmg (see RELEASE.md)
   `getMarkdown()` returns the exact document text. Theme/zoom live in
   `Compartment`s; a custom ViewPlugin paints search-match highlights (CM's
   built-in highlighter only paints while its panel is open, which we never use).
+- `live-preview.ts` — Typora/Obsidian-style WYSIWYG layer over the CM6 source.
+  Content styling is ALWAYS applied (headings big, bold bold) via
+  `Decoration.mark`/`.line`; only the markdown MARKERS are concealed
+  (`Decoration.replace`) UNLESS their line is selection-touched ("active"), then
+  raw source shows. Inline constructs + viewport-bounded math live in a
+  ViewPlugin; layout-affecting BLOCK widgets (tables, block `$$…$$`, block
+  images) must come from editor state, so they live in a `StateField`. KaTeX
+  (lazy-loaded on first math render) handles `$…$`/`$$…$$`.
 - `find.ts` — Find/Replace bar driving `@codemirror/search` via EditorController.
 - `dialog.ts` — custom 3-button Save/Don't Save/Cancel sheet (native dialog only
   does 2).
@@ -58,7 +66,9 @@ npm run tauri build    # release .app + .dmg (see RELEASE.md)
   (`docs/QA-CHECKLIST.md`); only logic + launch are automated.
 - Markdown round-trips are byte-faithful: the editor edits source text directly,
   so saving writes back exactly what's in the buffer (no normalization).
-- Live-preview marker-hiding (Typora-style WYSIWYG) is **Phase B**, not yet
-  implemented; today the editor shows syntax-highlighted markdown source.
+- Live-preview marker-hiding (Typora-style WYSIWYG) is **implemented** in
+  `live-preview.ts` and layered on top of the syntax-highlighted source. Reveal
+  is per-active-line (and per-construct for inline marks); block widgets reveal
+  whenever the selection touches any of their lines.
 - Capabilities live in `src-tauri/capabilities/default.json`; app-defined
   commands need no ACL entry, but `core:event`/window perms do.

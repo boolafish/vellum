@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Launch smoke test for the md-editor Tauri app (macOS).
+# Launch smoke test for the Vellum Tauri app (macOS).
 #
 # tauri-driver / Selenium do NOT work on macOS (no WKWebView WebDriver), so we
 # cannot drive the GUI. This script does the next best thing: it builds the
@@ -17,7 +17,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
-LOG="$(mktemp -t md-editor-smoke.XXXXXX.log)"
+LOG="$(mktemp -t vellum-smoke.XXXXXX.log)"
 RUN_SECONDS="${SMOKE_RUN_SECONDS:-12}"
 APP_PID=""
 
@@ -29,7 +29,7 @@ cleanup() {
     kill -KILL -- "-$APP_PID" 2>/dev/null || kill -KILL "$APP_PID" 2>/dev/null || true
   fi
   # Belt and suspenders: clean up any stragglers from this build.
-  pkill -f "target/debug/md-editor" 2>/dev/null || true
+  pkill -f "target/debug/vellum" 2>/dev/null || true
 }
 trap cleanup EXIT
 
@@ -52,7 +52,7 @@ while (( elapsed < RUN_SECONDS )); do
     break
   fi
   # tauri prints "Running" / app window opens; treat sustained quiet as booted.
-  if grep -qiE "app listening|running .*md-editor|finished .*dev" "$LOG"; then
+  if grep -qiE "app listening|running .*vellum|finished .*dev" "$LOG"; then
     booted=1
   fi
   sleep 1

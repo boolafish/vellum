@@ -1,12 +1,12 @@
 [package]
-name = "md-editor"
+name = "vellum"
 version = "0.1.0"
-description = "A lightweight, fast Typora-style markdown editor"
+description = "A lightweight, fast Markdown editor"
 edition = "2021"
 rust-version = "1.77"
 
 [lib]
-name = "md_editor_lib"
+name = "vellum_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]

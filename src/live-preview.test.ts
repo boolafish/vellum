@@ -4,7 +4,7 @@ import { EditorState } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import { markdown } from "@codemirror/lang-markdown";
 import { Table } from "@lezer/markdown";
-import { livePreview } from "./live-preview";
+import { livePreview, loadKatex } from "./live-preview";
 
 /**
  * Regression test for the block-decoration architecture: rendered tables,
@@ -23,7 +23,7 @@ function mount(doc: string): EditorView {
 }
 
 describe("livePreview block decorations", () => {
-  it("renders a table + block math + block image without throwing", () => {
+  it("renders a table + block math + block image without throwing", async () => {
     const doc = `# Doc
 
 | A | B |
@@ -45,6 +45,10 @@ Some **bold** and \`code\` and inline $a+b$ math and a [link](https://x).
       // Move the cursor to the end (outside every block) so all blocks render.
       view.dispatch({ selection: { anchor: doc.length } });
     }).not.toThrow();
+
+    // KaTeX is lazy-loaded: math renders raw, then swaps in once the dynamic
+    // import resolves. Await it so the rendered output is observable.
+    await loadKatex();
 
     // The block widgets' toDOM runs during measure; assert they rendered.
     const html = view.dom.innerHTML;

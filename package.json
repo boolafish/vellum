@@ -1,7 +1,7 @@
 {
-  "name": "md-editor",
+  "name": "vellum",
   "version": "0.1.0",
-  "description": "A lightweight, fast Typora-style markdown editor",
+  "description": "A lightweight, fast Markdown editor",
   "type": "module",
   "scripts": {
     "dev": "vite",

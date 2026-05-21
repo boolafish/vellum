@@ -1,4 +1,4 @@
-# Manual QA Checklist — MD Editor (macOS)
+# Manual QA Checklist — Vellum (macOS)
 
 Tauri's WebDriver layer (`tauri-driver`) has **no macOS WKWebView driver**, so the
 native menu bar, OS keyboard shortcuts, window chrome, and theme switching cannot

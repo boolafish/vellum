@@ -17,7 +17,6 @@ import {
 import { syntaxTree } from "@codemirror/language";
 import type { SyntaxNodeRef } from "@lezer/common";
 import { convertFileSrc } from "@tauri-apps/api/core";
-import katex from "katex";
 
 /**
  * Path of the currently-open document, used to resolve RELATIVE image `src`s
@@ -46,13 +45,43 @@ export const docPathChanged = StateEffect.define<null>();
  * visible ranges only via `syntaxTree`, so large documents stay fast.
  */
 
-/** A marker range that overlaps any selection range is never concealed —
- * concealing under the caret would fight the cursor. */
-function overlapsSelection(view: EditorView, from: number, to: number): boolean {
-  for (const r of view.state.selection.ranges) {
-    if (r.from <= to && r.to >= from) return true;
+/**
+ * Selection-derived predicates shared by the inline (ViewPlugin) and block
+ * (StateField) decoration builders. "Active" = touched by a selection range;
+ * an active line reveals its markers, and a marker overlapping a selection is
+ * never concealed (concealing under the caret would fight the cursor).
+ */
+interface SelectionContext {
+  /** The line at `pos` is selection-touched. */
+  lineActive(pos: number): boolean;
+  /** Any line in [from,to] is active — for multi-line block widgets (tables,
+   *  block math) which reveal source whenever the cursor is anywhere inside. */
+  rangeActive(from: number, to: number): boolean;
+  /** [from,to] overlaps any selection range. */
+  overlaps(from: number, to: number): boolean;
+}
+
+function selectionContext(state: EditorState): SelectionContext {
+  const doc = state.doc;
+  const activeLines = new Set<number>();
+  for (const r of state.selection.ranges) {
+    const a = doc.lineAt(r.from).number;
+    const b = doc.lineAt(r.to).number;
+    for (let n = a; n <= b; n++) activeLines.add(n);
   }
-  return false;
+  return {
+    lineActive: (pos) => activeLines.has(doc.lineAt(pos).number),
+    rangeActive: (from, to) => {
+      const a = doc.lineAt(from).number;
+      const b = doc.lineAt(to).number;
+      for (let n = a; n <= b; n++) if (activeLines.has(n)) return true;
+      return false;
+    },
+    overlaps: (from, to) => {
+      for (const r of state.selection.ranges) if (r.from <= to && r.to >= from) return true;
+      return false;
+    },
+  };
 }
 
 /** Bullet widget: renders an inactive `-`/`*`/`+` list marker as a bullet. */
@@ -158,7 +187,10 @@ function renderInlineMarkdown(src: string): string {
         return `<code class="cm-lp-code">${escapeHtml(part.slice(1, -1))}</code>`;
       }
       let s = escapeHtml(part);
-      s = s.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_, t: string) => `<a class="cm-lp-link">${t}</a>`);
+      // Link text only: the rendered cell is a block widget, so there's no
+      // source node to ⌘-click — render the label as styled (non-interactive)
+      // text rather than a dead <a>. Editing the cell reveals the real source.
+      s = s.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_, t: string) => `<span class="cm-lp-link">${t}</span>`);
       s = s.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
       s = s.replace(/__([^_]+)__/g, "<strong>$1</strong>");
       s = s.replace(/~~([^~]+)~~/g, "<del>$1</del>");
@@ -327,8 +359,23 @@ class ImageWidget extends WidgetType {
   }
 }
 
+/** KaTeX is ~280 kB and most docs have no math, so it's kept off the startup
+ *  path and dynamically imported on first math render. Resolves to the module's
+ *  `renderToString`; cached after the first load. Exported for tests to await. */
+let katexRender: ((tex: string, opts: object) => string) | null = null;
+let katexLoading: Promise<void> | null = null;
+export function loadKatex(): Promise<void> {
+  if (katexRender) return Promise.resolve();
+  katexLoading ??= import("katex").then((m) => {
+    katexRender = m.default.renderToString;
+  });
+  return katexLoading;
+}
+
 /** Renders inline `$...$` or block `$$...$$` math via KaTeX. On any KaTeX error
- *  it shows the raw source so a single bad formula can't break the build. */
+ *  it shows the raw source so a single bad formula can't break the build. While
+ *  KaTeX is still loading the raw source shows; the span is swapped in place
+ *  once the module resolves. */
 class MathWidget extends WidgetType {
   constructor(
     private readonly tex: string,
@@ -341,15 +388,26 @@ class MathWidget extends WidgetType {
   }
   toDOM(): HTMLElement {
     const span = document.createElement(this.display ? "div" : "span");
-    span.className = this.display ? "cm-lp-math-block" : "cm-lp-math-inline";
-    try {
-      span.innerHTML = katex.renderToString(this.tex, {
-        throwOnError: false,
-        displayMode: this.display,
-      });
-    } catch {
-      span.className = "cm-lp-math-error";
-      span.textContent = this.display ? `$$${this.tex}$$` : `$${this.tex}$`;
+    const raw = this.display ? `$$${this.tex}$$` : `$${this.tex}$`;
+    const render = () => {
+      try {
+        span.className = this.display ? "cm-lp-math-block" : "cm-lp-math-inline";
+        span.innerHTML = katexRender!(this.tex, {
+          throwOnError: false,
+          displayMode: this.display,
+        });
+      } catch {
+        span.className = "cm-lp-math-error";
+        span.textContent = raw;
+      }
+    };
+    if (katexRender) {
+      render();
+    } else {
+      // Show raw source until KaTeX loads, then swap the rendered math in.
+      span.className = this.display ? "cm-lp-math-block" : "cm-lp-math-inline";
+      span.textContent = raw;
+      void loadKatex().then(render);
     }
     return span;
   }
@@ -423,8 +481,7 @@ function buildMath(
   tree: ReturnType<typeof syntaxTree>,
   deco: Range<Decoration>[],
   atomic: Range<Decoration>[],
-  lineActive: (pos: number) => boolean,
-  rangeActive: (from: number, to: number) => boolean,
+  sel: SelectionContext,
 ): void {
   const doc = view.state.doc;
   for (const { from: vFrom, to: vTo } of view.visibleRanges) {
@@ -452,11 +509,7 @@ function buildMath(
             // from the ViewPlugin. MULTI-LINE `$$…$$` is a block decoration and
             // is owned by the StateField (buildBlockDecorations) — we only skip
             // past it here so its inner `$` aren't mis-parsed as inline math.
-            if (
-              sameLine &&
-              !rangeActive(absStart, absEnd) &&
-              !overlapsSelection(view, absStart, absEnd)
-            ) {
+            if (sameLine && !sel.rangeActive(absStart, absEnd) && !sel.overlaps(absStart, absEnd)) {
               const w = Decoration.replace({
                 widget: new MathWidget(tex, false),
               }).range(absStart, absEnd);
@@ -496,7 +549,7 @@ function buildMath(
       if (found !== -1 && !inCode(tree, vFrom + found)) {
         const absEnd = vFrom + found + 1;
         const tex = text.slice(i + 1, found);
-        if (!lineActive(absStart) && !overlapsSelection(view, absStart, absEnd)) {
+        if (!sel.lineActive(absStart) && !sel.overlaps(absStart, absEnd)) {
           const w = Decoration.replace({
             widget: new MathWidget(tex, false),
           }).range(absStart, absEnd);
@@ -516,32 +569,14 @@ function buildDecorations(view: EditorView): LivePreviewDecos {
   const atomic: Range<Decoration>[] = [];
   const { state } = view;
   const doc = state.doc;
-
-  // Active lines = every line touched by any selection range.
-  const activeLines = new Set<number>();
-  for (const r of state.selection.ranges) {
-    const fromLine = doc.lineAt(r.from).number;
-    const toLine = doc.lineAt(r.to).number;
-    for (let n = fromLine; n <= toLine; n++) activeLines.add(n);
-  }
-  const lineActive = (pos: number) => activeLines.has(doc.lineAt(pos).number);
-
-  /** True if any line in [from,to] is active (selection-touched). Used for
-   *  multi-line block widgets (tables, block math) which must reveal source
-   *  whenever the cursor is anywhere inside them. */
-  const rangeActive = (from: number, to: number) => {
-    const a = doc.lineAt(from).number;
-    const b = doc.lineAt(to).number;
-    for (let n = a; n <= b; n++) if (activeLines.has(n)) return true;
-    return false;
-  };
+  const sel = selectionContext(state);
 
   // A construct's line(s) are active -> reveal (skip concealing). Helper for
   // single-position constructs.
   const conceal = (from: number, to: number) => {
     if (from >= to) return;
-    if (lineActive(from)) return;
-    if (overlapsSelection(view, from, to)) return;
+    if (sel.lineActive(from)) return;
+    if (sel.overlaps(from, to)) return;
     const r = concealMark.range(from, to);
     deco.push(r);
     atomic.push(r);
@@ -555,7 +590,7 @@ function buildDecorations(view: EditorView): LivePreviewDecos {
     node: SyntaxNodeRef,
     markNames: ReadonlySet<string>,
   ): void => {
-    if (overlapsSelection(view, node.from, node.to)) return; // cursor in span: show source
+    if (sel.overlaps(node.from, node.to)) return; // cursor in span: show source
     let child = node.node.firstChild;
     while (child) {
       if (markNames.has(child.name) && child.to > child.from) {
@@ -585,7 +620,7 @@ function buildDecorations(view: EditorView): LivePreviewDecos {
         // range, so skip its subtree; when ACTIVE, descend so inline
         // decorations inside cells still apply. ---
         if (name === "Table") {
-          if (!rangeActive(node.from, node.to) && !overlapsSelection(view, node.from, node.to)) {
+          if (!sel.rangeActive(node.from, node.to) && !sel.overlaps(node.from, node.to)) {
             return false;
           }
           return;
@@ -595,7 +630,7 @@ function buildDecorations(view: EditorView): LivePreviewDecos {
         // non-block replace widget. BLOCK images (alone on the line) are owned
         // by the StateField; we skip them so they aren't double-decorated. ---
         if (name === "Image") {
-          if (lineActive(node.from) || overlapsSelection(view, node.from, node.to)) return;
+          if (sel.lineActive(node.from) || sel.overlaps(node.from, node.to)) return;
           const img = parseImage(node, doc);
           if (!img) return; // malformed; leave source
           if (img.block) return false; // block image: StateField owns it
@@ -684,7 +719,7 @@ function buildDecorations(view: EditorView): LivePreviewDecos {
           // Per-construct reveal: conceal the brackets/URL unless the cursor is
           // within the link itself. Conceal unconditionally here (gate already
           // checked) rather than via the line-based `conceal`.
-          if (!overlapsSelection(view, node.from, node.to)) {
+          if (!sel.overlaps(node.from, node.to)) {
             const hide = (from: number, to: number) => {
               if (to <= from) return;
               const r = concealMark.range(from, to);
@@ -711,7 +746,7 @@ function buildDecorations(view: EditorView): LivePreviewDecos {
           // Task items (`- [ ] …`) get a checkbox instead of a bullet, so hide
           // the dash and let the TaskMarker render the box.
           const isTask = /^\s*[-*+]\s+\[[ xX]\]/.test(doc.lineAt(node.from).text);
-          const hidden = !lineActive(node.from) && !overlapsSelection(view, node.from, node.to);
+          const hidden = !sel.lineActive(node.from) && !sel.overlaps(node.from, node.to);
           if (isTask) {
             if (hidden) {
               const r = concealMark.range(node.from, node.to);
@@ -732,7 +767,7 @@ function buildDecorations(view: EditorView): LivePreviewDecos {
 
         // --- Task checkbox: render the `[ ]`/`[x]` marker as a square box ---
         if (name === "TaskMarker") {
-          if (lineActive(node.from) || overlapsSelection(view, node.from, node.to)) return;
+          if (sel.lineActive(node.from) || sel.overlaps(node.from, node.to)) return;
           const checked = /[xX]/.test(doc.sliceString(node.from, node.to));
           const w = Decoration.replace({
             widget: new CheckboxWidget(checked, node.from, node.to),
@@ -767,13 +802,7 @@ function buildDecorations(view: EditorView): LivePreviewDecos {
         if (name === "FencedCode") {
           const startLine = doc.lineAt(node.from).number;
           const endLine = doc.lineAt(node.to).number;
-          let active = false;
-          for (let n = startLine; n <= endLine; n++) {
-            if (activeLines.has(n)) {
-              active = true;
-              break;
-            }
-          }
+          const active = sel.rangeActive(node.from, node.to);
           let lang = "";
           let cc = node.node.firstChild;
           while (cc) {
@@ -821,7 +850,7 @@ function buildDecorations(view: EditorView): LivePreviewDecos {
         // --- Horizontal rule: render as a divider when inactive ---
         if (name === "HorizontalRule") {
           const line = doc.lineAt(node.from);
-          if (!activeLines.has(line.number) && !overlapsSelection(view, line.from, line.to)) {
+          if (!sel.lineActive(line.from) && !sel.overlaps(line.from, line.to)) {
             const r = ruleDeco.range(line.from, line.to);
             deco.push(r);
             atomic.push(r);
@@ -837,7 +866,7 @@ function buildDecorations(view: EditorView): LivePreviewDecos {
   // --- Math ($...$ inline, $$...$$ block) — not in the markdown grammar, so
   // scan the visible text directly. Skip any `$` that sits inside code so code
   // snippets containing `$` aren't mangled. ---
-  buildMath(view, tree, deco, atomic, lineActive, rangeActive);
+  buildMath(view, tree, deco, atomic, sel);
 
   // Decorations must be sorted by `from`, and line/replace ordering matters.
   return { deco: Decoration.set(deco, true), atomic: Decoration.set(atomic, true) };
@@ -859,23 +888,7 @@ function buildBlockDecorations(state: EditorState): {
 } {
   const doc = state.doc;
   const deco: Range<Decoration>[] = [];
-
-  const activeLines = new Set<number>();
-  for (const r of state.selection.ranges) {
-    const a = doc.lineAt(r.from).number;
-    const b = doc.lineAt(r.to).number;
-    for (let n = a; n <= b; n++) activeLines.add(n);
-  }
-  const rangeActive = (from: number, to: number) => {
-    const a = doc.lineAt(from).number;
-    const b = doc.lineAt(to).number;
-    for (let n = a; n <= b; n++) if (activeLines.has(n)) return true;
-    return false;
-  };
-  const selOverlaps = (from: number, to: number) => {
-    for (const r of state.selection.ranges) if (r.from <= to && r.to >= from) return true;
-    return false;
-  };
+  const sel = selectionContext(state);
 
   const tree = syntaxTree(state);
 
@@ -885,7 +898,7 @@ function buildBlockDecorations(state: EditorState): {
 
       // GFM table → block <table> widget.
       if (name === "Table") {
-        if (!rangeActive(node.from, node.to) && !selOverlaps(node.from, node.to)) {
+        if (!sel.rangeActive(node.from, node.to) && !sel.overlaps(node.from, node.to)) {
           const src = doc.sliceString(node.from, node.to);
           deco.push(
             Decoration.replace({ widget: new TableWidget(src), block: true }).range(
@@ -899,7 +912,7 @@ function buildBlockDecorations(state: EditorState): {
 
       // Block image (alone on its line) → block <img> widget.
       if (name === "Image") {
-        if (rangeActive(node.from, node.to) || selOverlaps(node.from, node.to)) return;
+        if (sel.rangeActive(node.from, node.to) || sel.overlaps(node.from, node.to)) return;
         const img = parseImage(node, doc);
         if (!img || !img.block) return; // inline images are owned by the plugin
         deco.push(
@@ -914,7 +927,7 @@ function buildBlockDecorations(state: EditorState): {
   });
 
   // Block math ($$…$$ spanning >1 line) — not in the grammar, scan the doc.
-  scanBlockMath(state, tree, deco, rangeActive, selOverlaps);
+  scanBlockMath(state, tree, deco, sel);
 
   const set = Decoration.set(deco, true);
   // Block-replace decorations must be atomic so the caret steps over them.
@@ -927,8 +940,7 @@ function scanBlockMath(
   state: EditorState,
   tree: ReturnType<typeof syntaxTree>,
   deco: Range<Decoration>[],
-  rangeActive: (from: number, to: number) => boolean,
-  selOverlaps: (from: number, to: number) => boolean,
+  sel: SelectionContext,
 ): void {
   const doc = state.doc;
   const text = doc.toString();
@@ -941,7 +953,7 @@ function scanBlockMath(
       const absEnd = close + 2;
       if (tex.length > 0 && !inCode(tree, close)) {
         const multiLine = doc.lineAt(i).number !== doc.lineAt(absEnd).number;
-        if (multiLine && !rangeActive(i, absEnd) && !selOverlaps(i, absEnd)) {
+        if (multiLine && !sel.rangeActive(i, absEnd) && !sel.overlaps(i, absEnd)) {
           deco.push(
             Decoration.replace({ widget: new MathWidget(tex, true), block: true }).range(
               i,

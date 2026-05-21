@@ -44,7 +44,7 @@ fn appearance_submenu(app: &AppHandle<Wry>, theme: ThemeMode) -> tauri::Result<S
 /// to the frontend. Edit-menu items use predefined (native) actions so
 /// undo/redo/clipboard work against WKWebView directly.
 pub fn build(app: &AppHandle<Wry>, recents: &[String], theme: ThemeMode) -> tauri::Result<Menu<Wry>> {
-    let app_menu = SubmenuBuilder::new(app, "MD Editor")
+    let app_menu = SubmenuBuilder::new(app, "Vellum")
         .about(None)
         .separator()
         .services()
@@ -55,7 +55,7 @@ pub fn build(app: &AppHandle<Wry>, recents: &[String], theme: ThemeMode) -> taur
         .separator()
         // Custom quit (not predefined) so it routes through the dirty guard.
         .item(
-            &MenuItemBuilder::with_id("quit", "Quit MD Editor")
+            &MenuItemBuilder::with_id("quit", "Quit Vellum")
                 .accelerator("CmdOrCtrl+Q")
                 .build(app)?,
         )
