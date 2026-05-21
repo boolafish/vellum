@@ -48,8 +48,21 @@ class BulletWidget extends WidgetType {
   }
 }
 
+/** Renders a markdown thematic break (`---`) as a horizontal divider line. */
+class RuleWidget extends WidgetType {
+  eq(): boolean {
+    return true;
+  }
+  toDOM(): HTMLElement {
+    const span = document.createElement("span");
+    span.className = "cm-lp-hr-line";
+    return span;
+  }
+}
+
 const concealMark = Decoration.replace({});
 const bulletDeco = Decoration.replace({ widget: new BulletWidget() });
+const ruleDeco = Decoration.replace({ widget: new RuleWidget() });
 
 const HEADING_LINE = [
   "cm-lp-h1",
@@ -246,10 +259,16 @@ function buildDecorations(view: EditorView): LivePreviewDecos {
           return;
         }
 
-        // --- Horizontal rule: style the line ---
+        // --- Horizontal rule: render as a divider when inactive ---
         if (name === "HorizontalRule") {
           const line = doc.lineAt(node.from);
-          deco.push(Decoration.line({ class: "cm-lp-hr" }).range(line.from));
+          if (!activeLines.has(line.number) && !overlapsSelection(view, line.from, line.to)) {
+            const r = ruleDeco.range(line.from, line.to);
+            deco.push(r);
+            atomic.push(r);
+          } else {
+            deco.push(Decoration.line({ class: "cm-lp-hr" }).range(line.from));
+          }
           return;
         }
       },

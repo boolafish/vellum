@@ -16,6 +16,7 @@ import {
 } from "@codemirror/commands";
 import { syntaxHighlighting, HighlightStyle, syntaxTree } from "@codemirror/language";
 import { markdown } from "@codemirror/lang-markdown";
+import { languages as codeLanguages } from "@codemirror/language-data";
 import {
   SearchQuery,
   setSearchQuery,
@@ -42,13 +43,35 @@ export interface SearchOptions {
  * that when they're revealed on the active line the reveal is quiet, not noisy.
  * We deliberately do NOT color headings/strong/emphasis here.
  */
+// Prose: only dimmed markers + link color (deliberately no heading/strong
+// color). The remaining tags only ever appear inside fenced code blocks (via
+// the nested language parser), so adding them gives code highlighting without
+// coloring prose. GitHub-ish light / VS Code-ish dark palettes.
 const lightHighlightStyle = HighlightStyle.define([
   { tag: [tags.processingInstruction, tags.meta], color: "#bcbcbc" },
   { tag: [tags.link, tags.url], color: "#2f6bff" },
+  { tag: tags.keyword, color: "#cf222e" },
+  { tag: [tags.string, tags.special(tags.string)], color: "#0a3069" },
+  { tag: [tags.number, tags.bool, tags.null], color: "#0550ae" },
+  { tag: [tags.comment, tags.lineComment, tags.blockComment], color: "#6e7781", fontStyle: "italic" },
+  { tag: [tags.function(tags.variableName), tags.labelName], color: "#8250df" },
+  { tag: [tags.typeName, tags.className, tags.namespace], color: "#953800" },
+  { tag: [tags.propertyName, tags.attributeName], color: "#0550ae" },
+  { tag: [tags.operator, tags.punctuation, tags.separator], color: "#24292f" },
+  { tag: tags.regexp, color: "#116329" },
 ]);
 const darkHighlightStyle = HighlightStyle.define([
   { tag: [tags.processingInstruction, tags.meta], color: "#5c5c5c" },
   { tag: [tags.link, tags.url], color: "#6aa9ff" },
+  { tag: tags.keyword, color: "#569cd6" },
+  { tag: [tags.string, tags.special(tags.string)], color: "#ce9178" },
+  { tag: [tags.number, tags.bool, tags.null], color: "#b5cea8" },
+  { tag: [tags.comment, tags.lineComment, tags.blockComment], color: "#6a9955", fontStyle: "italic" },
+  { tag: [tags.function(tags.variableName), tags.labelName], color: "#dcdcaa" },
+  { tag: [tags.typeName, tags.className, tags.namespace], color: "#4ec9b0" },
+  { tag: [tags.propertyName, tags.attributeName], color: "#9cdcfe" },
+  { tag: [tags.operator, tags.punctuation, tags.separator], color: "#d4d4d4" },
+  { tag: tags.regexp, color: "#d16969" },
 ]);
 
 const baseLightTheme = EditorView.theme({}, { dark: false });
@@ -161,7 +184,7 @@ export class EditorController {
       extensions: [
         history(),
         keymap.of([...defaultKeymap, ...historyKeymap]),
-        markdown(),
+        markdown({ codeLanguages }),
         EditorView.lineWrapping,
         this.themeCompartment.of(this.dark ? baseDarkTheme : baseLightTheme),
         this.highlightCompartment.of(
