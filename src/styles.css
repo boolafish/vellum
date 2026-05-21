@@ -92,7 +92,8 @@ body {
 
 .cm-scroller {
   overflow: auto;
-  line-height: 1.8;
+  /* line-height is set via the editor theme (.cm-content) — a plain rule here
+     loses to CodeMirror's baseTheme on specificity. */
   letter-spacing: 0.1px;
   /* Typora-style proportional reading font for body text. Code is scoped back
      to monospace below (.cm-lp-code and fenced-code lines). */

@@ -85,6 +85,10 @@ const baseDarkTheme = EditorView.theme({}, { dark: true });
 const typographyTheme = EditorView.theme({
   ".cm-content": {
     fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif",
+    // Set line-height HERE, not in plain CSS: CodeMirror's baseTheme sets
+    // .cm-content line-height (1.4) and a .cm-scroller CSS rule loses to it on
+    // specificity. EditorView.theme beats the baseTheme, so this actually wins.
+    lineHeight: "1.75",
   },
   ".cm-scroller": {
     justifyContent: "center",
