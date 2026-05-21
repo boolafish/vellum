@@ -107,6 +107,38 @@ function resolveImageSrc(src: string): string {
 
 /** Renders a GFM table block as a real <table>, honoring column alignment. */
 type Align = "left" | "center" | "right" | "";
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+/** Render a small subset of inline markdown (code, links, bold, italic, strike)
+ *  to safe HTML for use inside rendered table cells. Input is HTML-escaped
+ *  first; code spans are protected so their contents aren't re-formatted. */
+function renderInlineMarkdown(src: string): string {
+  // Split on inline code spans and format only the non-code segments, so a
+  // cell like "use `a*b`" never gets emphasis applied inside the code.
+  return src
+    .split(/(`[^`]+`)/)
+    .map((part) => {
+      if (part.length >= 2 && part.startsWith("`") && part.endsWith("`")) {
+        return `<code class="cm-lp-code">${escapeHtml(part.slice(1, -1))}</code>`;
+      }
+      let s = escapeHtml(part);
+      s = s.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_, t: string) => `<a class="cm-lp-link">${t}</a>`);
+      s = s.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+      s = s.replace(/__([^_]+)__/g, "<strong>$1</strong>");
+      s = s.replace(/~~([^~]+)~~/g, "<del>$1</del>");
+      s = s.replace(/\*([^*]+)\*/g, "<em>$1</em>");
+      s = s.replace(/(^|[^\w])_([^_]+)_(?=[^\w]|$)/g, "$1<em>$2</em>");
+      return s;
+    })
+    .join("");
+}
+
 class TableWidget extends WidgetType {
   constructor(private readonly src: string) {
     super();
@@ -132,7 +164,7 @@ class TableWidget extends WidgetType {
     const htr = document.createElement("tr");
     headerCells.forEach((cell, i) => {
       const th = document.createElement("th");
-      th.textContent = cell;
+      th.innerHTML = renderInlineMarkdown(cell);
       const a = aligns[i];
       if (a) th.style.textAlign = a;
       htr.appendChild(th);
@@ -146,7 +178,7 @@ class TableWidget extends WidgetType {
       // Pad/truncate to header column count.
       for (let i = 0; i < headerCells.length; i++) {
         const td = document.createElement("td");
-        td.textContent = row[i] ?? "";
+        td.innerHTML = renderInlineMarkdown(row[i] ?? "");
         const a = aligns[i];
         if (a) td.style.textAlign = a;
         tr.appendChild(td);
