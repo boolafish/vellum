@@ -536,6 +536,22 @@ body {
   border: 1px solid color-mix(in srgb, var(--fg) 18%, transparent);
   padding: 6px 13px;
   text-align: left;
+  /* CM's lineWrapping sets `overflow-wrap: anywhere; word-break: break-word`
+     on .cm-content, which our cells INHERIT — that shatters whole words
+     ("Depth" → D/e/p/t/h) to satisfy table-layout:auto's min-content. Reset to
+     normal so text columns keep their whole-word minimum width. */
+  overflow-wrap: normal;
+  word-break: normal;
+  white-space: normal;
+}
+
+/* ...but a single long unbreakable code token (e.g.
+   `wallet/ethscw/send_relayer.go:164`) would then inflate its column's
+   min-content and starve the others. Allow ONLY code chips to break. */
+.cm-lp-table th .cm-lp-code,
+.cm-lp-table td .cm-lp-code {
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .cm-lp-table th {
