@@ -30,6 +30,7 @@ import {
   replaceAll as cmReplaceAll,
 } from "@codemirror/search";
 import { tags } from "@lezer/highlight";
+import { livePreview } from "./live-preview";
 
 export interface SearchOptions {
   query: string;
@@ -139,6 +140,9 @@ export class EditorController {
             : syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
         ),
         this.fontCompartment.of(this.fontTheme(this.fontLevel)),
+        livePreview(),
+        // Search highlighter is registered AFTER live-preview so its marks
+        // paint on top of the live-preview content styling.
         searchMatchHighlighter,
         EditorView.updateListener.of((update) => {
           if (update.docChanged && !this.loading) this.changeCb();

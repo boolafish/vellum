@@ -94,7 +94,9 @@ body {
   overflow: auto;
   line-height: 1.7;
   letter-spacing: 0.1px;
-  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  /* Typora-style proportional reading font for body text. Code is scoped back
+     to monospace below (.cm-lp-code and fenced-code lines). */
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
 }
 
 /* Center the editing column, Typora-style: a capped measure with comfortable
@@ -273,6 +275,63 @@ body {
   background: #2f6bff;
   border-color: #2f6bff;
   color: #fff;
+}
+
+/* ---- Live-preview layer (decorations from src/live-preview.ts) ----
+   Heading sizes live in the CM baseTheme; structural/color styling that needs
+   the light/dark CSS vars lives here so both themes work. */
+
+/* Inline code chip: subtle bg + monospace + padding. */
+.cm-lp-code {
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 0.9em;
+  background: color-mix(in srgb, var(--fg) 8%, transparent);
+  border-radius: 4px;
+  padding: 0.1em 0.35em;
+}
+
+/* Fenced code blocks stay monospace (line decoration over the whole block,
+   fences included). */
+.cm-lp-codeblock {
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 0.9em;
+  background: color-mix(in srgb, var(--fg) 4%, transparent);
+}
+
+.cm-lp-link {
+  color: #2f6bff;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+:root[data-theme="dark"] .cm-lp-link {
+  color: #4da6ff;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) .cm-lp-link {
+    color: #4da6ff;
+  }
+}
+
+.cm-lp-listmark {
+  color: var(--muted);
+}
+
+.cm-lp-bullet {
+  color: var(--muted);
+}
+
+/* Blockquote: left bar + muted text via line decoration. */
+.cm-lp-quote {
+  border-left: 3px solid var(--border);
+  padding-left: 12px;
+  color: var(--muted);
+}
+
+/* Horizontal rule line. */
+.cm-lp-hr {
+  color: var(--muted);
 }
 
 /* Search-match highlight decorations (custom ViewPlugin in editor.ts). */
