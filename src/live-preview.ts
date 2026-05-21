@@ -1009,12 +1009,12 @@ const livePreviewPlugin = ViewPlugin.fromClass(
  * palette spirit as the chrome; light/dark are handled via CSS vars in
  * styles.css for the structural pieces, while font sizing lives here. */
 const livePreviewTheme = EditorView.baseTheme({
-  ".cm-lp-h1": { fontSize: "1.9em", fontWeight: "700", lineHeight: "1.3" },
-  ".cm-lp-h2": { fontSize: "1.6em", fontWeight: "700", lineHeight: "1.3" },
-  ".cm-lp-h3": { fontSize: "1.35em", fontWeight: "700", lineHeight: "1.3" },
-  ".cm-lp-h4": { fontSize: "1.18em", fontWeight: "700", lineHeight: "1.35" },
-  ".cm-lp-h5": { fontSize: "1.05em", fontWeight: "700", lineHeight: "1.4" },
-  ".cm-lp-h6": { fontSize: "1em", fontWeight: "700" },
+  ".cm-lp-h1": { fontSize: "2.25em", fontWeight: "600", lineHeight: "1.25" },
+  ".cm-lp-h2": { fontSize: "1.7em", fontWeight: "600", lineHeight: "1.3" },
+  ".cm-lp-h3": { fontSize: "1.4em", fontWeight: "600", lineHeight: "1.3" },
+  ".cm-lp-h4": { fontSize: "1.2em", fontWeight: "600", lineHeight: "1.35" },
+  ".cm-lp-h5": { fontSize: "1.05em", fontWeight: "600", lineHeight: "1.4" },
+  ".cm-lp-h6": { fontSize: "1em", fontWeight: "600" },
   ".cm-lp-strong": { fontWeight: "700" },
   ".cm-lp-em": { fontStyle: "italic" },
   ".cm-lp-strike": { textDecoration: "line-through" },

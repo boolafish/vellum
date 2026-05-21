@@ -92,7 +92,7 @@ body {
 
 .cm-scroller {
   overflow: auto;
-  line-height: 1.7;
+  line-height: 1.8;
   letter-spacing: 0.1px;
   /* Typora-style proportional reading font for body text. Code is scoped back
      to monospace below (.cm-lp-code and fenced-code lines). */
