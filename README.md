@@ -3,6 +3,10 @@
 A lightweight, fast, Mac-only Markdown editor. Single-window, document-centric,
 with a Typora/Obsidian-style live preview layered directly over the source.
 
+| Light | Dark |
+| --- | --- |
+| ![Vellum, light theme](docs/screenshot-light.png) | ![Vellum, dark theme](docs/screenshot-dark.png) |
+
 - **Shell:** [Tauri 2](https://tauri.app) (Rust + WKWebView)
 - **Editor:** [CodeMirror 6](https://codemirror.net) — syntax-highlighted Markdown source
 - **Frontend:** vanilla TypeScript + [Vite](https://vitejs.dev)
@@ -41,3 +45,7 @@ backend (`src-tauri/src/`) modules and conventions.
 ## Platform
 
 macOS only (minimum 10.15).
+
+## License
+
+[MIT](LICENSE) © boolafish
