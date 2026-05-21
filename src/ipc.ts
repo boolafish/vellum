@@ -9,6 +9,8 @@ export const Action = {
   SaveAs: "save-as",
   Close: "close",
   Quit: "quit",
+  Undo: "undo",
+  Redo: "redo",
   Find: "find",
   ZoomIn: "zoom-in",
   ZoomOut: "zoom-out",

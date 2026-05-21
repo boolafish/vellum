@@ -77,8 +77,11 @@ pub fn build(app: &AppHandle<Wry>, recents: &[String], theme: ThemeMode) -> taur
         .build()?;
 
     let edit_menu = SubmenuBuilder::new(app, "Edit")
-        .undo()
-        .redo()
+        // Custom undo/redo (not predefined): CodeMirror manages its own history,
+        // which WKWebView's native undo doesn't drive. Cut/Copy/Paste/SelectAll
+        // stay predefined — those native clipboard ops work on CM's content.
+        .item(&MenuItemBuilder::with_id("undo", "Undo").accelerator("CmdOrCtrl+Z").build(app)?)
+        .item(&MenuItemBuilder::with_id("redo", "Redo").accelerator("CmdOrCtrl+Shift+Z").build(app)?)
         .separator()
         .cut()
         .copy()

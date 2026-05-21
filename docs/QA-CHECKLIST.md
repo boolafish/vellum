@@ -46,7 +46,7 @@ emit a custom action.
 | Select All | ⌘A | Selects whole document. | [now] |
 | Find… | ⌘F | Toggles the Find / Replace bar (top-right of the editor). | [now] |
 
-- [ ] Undo/redo behave against the Milkdown editor, not the OS-level field only.
+- [ ] Undo/redo behave against the CodeMirror editor, not the OS-level field only.
 
 ## Find / Replace (⌘F)
 

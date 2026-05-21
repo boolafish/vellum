@@ -1,8 +1,8 @@
 # MD Editor
 
 A lightweight, fast, Mac-only Typora-style markdown editor. **Tauri 2** (Rust +
-WKWebView) shell, **Milkdown Crepe** WYSIWYG editor, vanilla TypeScript + Vite
-frontend. Single-window, document-centric.
+WKWebView) shell, **CodeMirror 6** editor (source mode: syntax-highlighted
+markdown), vanilla TypeScript + Vite frontend. Single-window, document-centric.
 
 ## Commands
 
@@ -22,13 +22,17 @@ npm run tauri build    # release .app + .dmg (see RELEASE.md)
 - `app.ts` — top-level controller; owns document state (path/dirty/zoom), routes
   menu actions, the unsaved-changes guard, window-close interception, and OS
   file-opening. `Action.Find` is handled before the busy gate (view-only).
-- `editor.ts` — `EditorController` wraps Crepe. Crepe is immutable post-create,
-  so `load()` tears down and rebuilds; the ProseMirror view + search plugin are
-  recaptured each load. Pins remark-stringify options for stable round-trips.
-- `find.ts` — Find/Replace bar driving `prosemirror-search`.
+- `editor.ts` — `EditorController` wraps a single CodeMirror 6 `EditorView`.
+  `load()` swaps the document via `setState` (preserving theme + zoom
+  compartments, dropping undo history). Round-trips are byte-faithful —
+  `getMarkdown()` returns the exact document text. Theme/zoom live in
+  `Compartment`s; a custom ViewPlugin paints search-match highlights (CM's
+  built-in highlighter only paints while its panel is open, which we never use).
+- `find.ts` — Find/Replace bar driving `@codemirror/search` via EditorController.
 - `dialog.ts` — custom 3-button Save/Don't Save/Cancel sheet (native dialog only
   does 2).
-- `theme.ts` — Light/Dark/System; swaps Crepe's frame stylesheet + `data-theme`.
+- `theme.ts` — Light/Dark/System; sets `data-theme` for the chrome and calls
+  `editor.setTheme(dark)` to reconfigure CM's theme + syntax highlighting.
 - `ipc.ts` — the Rust↔TS action contract (ids must match `menu.rs`).
 - `files.ts` — dialog + fs wrappers.
 
@@ -52,8 +56,9 @@ npm run tauri build    # release .app + .dmg (see RELEASE.md)
   (RecentsState/ThemeState) — std Mutex isn't reentrant.
 - **No macOS WebDriver** → native-menu/GUI behavior is manual
   (`docs/QA-CHECKLIST.md`); only logic + launch are automated.
-- Markdown round-trips through a doc tree, so saving normalizes formatting
-  (intentional, pinned in `editor.ts`). The ~1.5MB JS chunk is the Crepe core
-  (grammars lazy-split) — fine for a local app.
+- Markdown round-trips are byte-faithful: the editor edits source text directly,
+  so saving writes back exactly what's in the buffer (no normalization).
+- Live-preview marker-hiding (Typora-style WYSIWYG) is **Phase B**, not yet
+  implemented; today the editor shows syntax-highlighted markdown source.
 - Capabilities live in `src-tauri/capabilities/default.json`; app-defined
   commands need no ACL entry, but `core:event`/window perms do.

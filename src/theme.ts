@@ -1,21 +1,21 @@
-import frameLight from "@milkdown/crepe/theme/frame.css?url";
-import frameDark from "@milkdown/crepe/theme/frame-dark.css?url";
+import type { EditorController } from "./editor";
 
 export type ThemeMode = "light" | "dark" | "system";
 
 /**
- * Applies the appearance preference (owned/persisted in Rust). Swaps Crepe's
- * light/dark editor stylesheet and sets `data-theme` on <html> for our own
- * chrome. "system" follows the OS via prefers-color-scheme and live-updates.
+ * Applies the appearance preference (owned/persisted in Rust). Sets `data-theme`
+ * on <html> for our own chrome (toolbar/modal/find-bar) and tells the editor to
+ * reconfigure its CodeMirror theme + syntax highlighting. "system" follows the
+ * OS via prefers-color-scheme and live-updates.
  */
 class ThemeManager {
   private mode: ThemeMode = "system";
-  private readonly link = document.createElement("link");
+  private editor: EditorController | null = null;
   private readonly mql = window.matchMedia("(prefers-color-scheme: dark)");
 
-  init(): void {
-    this.link.rel = "stylesheet";
-    document.head.appendChild(this.link);
+  /** App passes the editor so theme changes can reconfigure CM's appearance. */
+  init(editor?: EditorController): void {
+    if (editor) this.editor = editor;
     this.mql.addEventListener("change", () => {
       if (this.mode === "system") this.render();
     });
@@ -29,13 +29,13 @@ class ThemeManager {
 
   private render(): void {
     const dark = this.mode === "dark" || (this.mode === "system" && this.mql.matches);
-    this.link.href = dark ? frameDark : frameLight;
     const root = document.documentElement;
     if (this.mode === "system") {
       root.removeAttribute("data-theme");
     } else {
       root.setAttribute("data-theme", this.mode);
     }
+    this.editor?.setTheme(dark);
   }
 }
 

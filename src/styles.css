@@ -8,7 +8,8 @@
 
 /* Dark palette: applied when forced (data-theme="dark") or, in System mode
    (no data-theme attribute), when the OS prefers dark. data-theme="light"
-   pins light regardless of OS. Theme.ts also swaps Crepe's frame stylesheet. */
+   pins light regardless of OS. Theme.ts also reconfigures the CodeMirror
+   theme + syntax highlighting to match. */
 :root[data-theme="dark"] {
   --bg: #1e1e1e;
   --fg: #e8e8e8;
@@ -73,45 +74,45 @@ body {
 
 #editor {
   flex: 1 1 auto;
-  overflow-y: auto;
+  overflow: hidden;
+  min-height: 0;
 }
 
-/* Center the editing column, Typora-style. Wider measure with modest side
-   padding so the window width isn't wasted; still capped for readability. */
-.milkdown {
+/* A single flat editing surface: the CM editor fills #editor with NO inner
+   panel, border, or different shade — its background is exactly our --bg. */
+.cm-editor {
+  height: 100%;
+  background: var(--bg);
+  color: var(--fg);
+}
+
+.cm-editor.cm-focused {
+  outline: none;
+}
+
+.cm-scroller {
+  overflow: auto;
+  line-height: 1.7;
+  letter-spacing: 0.1px;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+}
+
+/* Center the editing column, Typora-style: a capped measure with comfortable
+   side padding and generous bottom padding so the caret never sits at the edge. */
+.cm-content {
   max-width: 1000px;
   margin: 0 auto;
   padding: 24px 56px 40vh;
+  caret-color: var(--fg);
 }
 
-/* Typography polish: comfortable reading rhythm on top of the Crepe theme. */
-.milkdown .ProseMirror {
-  line-height: 1.7;
-  font-size: 16px;
-  letter-spacing: 0.1px;
+.cm-editor .cm-cursor {
+  border-left-color: var(--fg);
 }
 
-.milkdown .ProseMirror > * + * {
-  margin-top: 0.9em;
-}
-
-.milkdown .ProseMirror h1,
-.milkdown .ProseMirror h2,
-.milkdown .ProseMirror h3 {
-  line-height: 1.3;
-  margin-top: 1.6em;
-}
-
-.milkdown .ProseMirror h1 {
-  letter-spacing: -0.4px;
-}
-
-.milkdown .ProseMirror blockquote {
-  color: var(--muted);
-}
-
-.milkdown .ProseMirror :not(pre) > code {
-  font-size: 0.9em;
+/* Active-line / gutter chrome would re-introduce a two-layer look; keep flat. */
+.cm-editor .cm-gutters {
+  display: none;
 }
 
 /* Unsaved-changes sheet */
@@ -274,13 +275,13 @@ body {
   color: #fff;
 }
 
-/* prosemirror-search highlight decorations */
-.milkdown .ProseMirror .ProseMirror-search-match {
+/* Search-match highlight decorations (custom ViewPlugin in editor.ts). */
+.cm-searchMatch {
   background: color-mix(in srgb, #ffd54a 55%, transparent);
   border-radius: 2px;
 }
 
-.milkdown .ProseMirror .ProseMirror-active-search-match {
+.cm-searchMatch-selected {
   background: color-mix(in srgb, #ff9a3d 75%, transparent);
   border-radius: 2px;
 }

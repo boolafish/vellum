@@ -4,10 +4,10 @@ const DEBOUNCE_MS = 120;
 
 /**
  * Native-feeling Find / Find & Replace bar pinned to the top-right of the
- * editor. Drives prosemirror-search via the EditorController. Typing updates
- * the live highlight (debounced); Enter → next, Shift+Enter → prev, Esc →
- * close + clear. Only the highlight state lives in ProseMirror — this class
- * owns the overlay DOM and the current query inputs.
+ * editor. Drives the editor's search (CodeMirror) via the EditorController.
+ * Typing updates the live highlight (debounced); Enter → next, Shift+Enter →
+ * prev, Esc → close + clear. Only the query/highlight state lives in the
+ * editor — this class owns the overlay DOM and the current query inputs.
  */
 export class FindBar {
   private readonly el: HTMLDivElement;

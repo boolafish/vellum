@@ -12,13 +12,13 @@ import { basename, pickOpenPath, pickSavePath, readFile, writeFile } from "./fil
 
 const DEFAULT_DOC = `# Welcome
 
-Start typing. This is a **Typora-style** WYSIWYG markdown editor.
+Start typing. This is a **Typora-style** markdown editor.
 
-- Live inline rendering
+- Syntax-highlighted markdown source
 - \`⌘O\` to open · \`⌘S\` to save · \`⇧⌘S\` save as
-- Tables, code blocks, and math included
+- \`⌘F\` to find and replace
 
-> Built with Tauri 2 + Milkdown.
+> Built with Tauri 2 + CodeMirror 6.
 `;
 
 const ZOOM_MIN = 0.5;
@@ -30,7 +30,6 @@ const OPENABLE = /\.(md|markdown|txt)$/i;
 export class App {
   private readonly editor = new EditorController("#editor");
   private readonly findBar = new FindBar(this.editor);
-  private readonly editorEl = document.querySelector<HTMLElement>("#editor")!;
   private readonly filenameEl = document.querySelector<HTMLElement>("#filename")!;
   private readonly dirtyEl = document.querySelector<HTMLElement>("#dirty-dot")!;
 
@@ -42,7 +41,7 @@ export class App {
   private pendingClose = false;
 
   async start(): Promise<void> {
-    theme.init();
+    theme.init(this.editor);
     this.editor.onChange(() => this.setDirty(true));
     const launchFiles = await this.wireNativeIntegrations();
     await this.applyStoredTheme();
@@ -89,11 +88,18 @@ export class App {
   }
 
   private handle(action: Action): Promise<void> {
-    // Find is a view-only toggle, not a document mutation: keep it out of the
-    // `busy` re-entrancy gate so ⌘F works even while a save/open is settling.
-    if (action === Action.Find) {
-      this.findBar.toggle();
-      return Promise.resolve();
+    // Find/Undo/Redo act synchronously on the editor view (not async file ops),
+    // so keep them out of the `busy` re-entrancy gate.
+    switch (action) {
+      case Action.Find:
+        this.findBar.toggle();
+        return Promise.resolve();
+      case Action.Undo:
+        this.editor.undo();
+        return Promise.resolve();
+      case Action.Redo:
+        this.editor.redo();
+        return Promise.resolve();
     }
     return this.runExclusive(() => this.dispatch(action));
   }
@@ -152,6 +158,8 @@ export class App {
       case Action.ZoomReset:
         return this.applyZoom(1);
       case Action.Find:
+      case Action.Undo:
+      case Action.Redo:
         // Handled in handle() before the busy gate; never reaches here.
         return;
     }
@@ -280,8 +288,9 @@ export class App {
 
   private applyZoom(next: number): void {
     this.zoom = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, Math.round(next * 100) / 100));
-    // `zoom` is well-supported in WKWebView and scales the whole editor cleanly.
-    this.editorEl.style.zoom = String(this.zoom);
+    // Scales the editor's font size via a CM theme compartment (no inner
+    // re-layout of the chrome).
+    this.editor.setZoom(this.zoom);
   }
 
   private setDirty(value: boolean): void {

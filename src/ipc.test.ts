@@ -19,7 +19,9 @@ describe("isAction", () => {
   it("rejects predefined native menu ids that never reach the dispatcher", () => {
     // These are handled natively by WKWebView and must not be treated as
     // custom Actions if they ever leaked through the event.
-    for (const id of ["copy", "undo", "redo", "cut", "paste", "select-all"]) {
+    // Cut/Copy/Paste/SelectAll stay native predefined items; Undo/Redo are now
+    // custom actions (CM6 owns its history) and are validated separately.
+    for (const id of ["copy", "cut", "paste", "select-all"]) {
       expect(isAction(id)).toBe(false);
     }
   });

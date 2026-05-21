@@ -1,55 +1,155 @@
-import { Crepe } from "@milkdown/crepe";
-import { editorViewCtx, remarkStringifyOptionsCtx } from "@milkdown/kit/core";
-import { $prose } from "@milkdown/kit/utils";
-import type { EditorView } from "@milkdown/prose/view";
+import { EditorState, Compartment, type Extension } from "@codemirror/state";
+import {
+  EditorView,
+  keymap,
+  ViewPlugin,
+  Decoration,
+  type DecorationSet,
+  type ViewUpdate,
+} from "@codemirror/view";
+import {
+  defaultKeymap,
+  history,
+  historyKeymap,
+  undo as cmUndo,
+  redo as cmRedo,
+} from "@codemirror/commands";
+import {
+  defaultHighlightStyle,
+  syntaxHighlighting,
+  HighlightStyle,
+} from "@codemirror/language";
+import { markdown } from "@codemirror/lang-markdown";
 import {
   SearchQuery,
-  findNext,
-  findPrev,
-  replaceAll,
-  replaceNext,
-  search,
-  setSearchState,
-} from "prosemirror-search";
-import "@milkdown/crepe/theme/common/style.css";
-// The light/dark frame theme is loaded dynamically by theme.ts.
+  setSearchQuery,
+  getSearchQuery,
+  findNext as cmFindNext,
+  findPrevious as cmFindPrevious,
+  replaceNext as cmReplaceNext,
+  replaceAll as cmReplaceAll,
+} from "@codemirror/search";
+import { tags } from "@lezer/highlight";
 
-// Stable remark-stringify options so saving normalizes markdown predictably
-// instead of drifting between `*`/`_`, `-`/`*` bullets, indentation, etc.
-// (Milkdown serializes from a document tree, so some normalization is
-// unavoidable; pinning these keeps it consistent and diff-friendly.)
-const STRINGIFY_OPTIONS = {
-  bullet: "-",
-  emphasis: "_",
-  strong: "*",
-  fence: "`",
-  fences: true,
-  rule: "-",
-  ruleSpaces: false,
-  listItemIndent: "one",
-  incrementListMarker: true,
-  resourceLink: true,
-} as const;
-
-/**
- * Wraps a Milkdown Crepe instance. Crepe instances are immutable after
- * create(), so loading a new document tears down the old editor and builds
- * a fresh one — this class hides that lifecycle behind load()/getMarkdown().
- */
 export interface SearchOptions {
   query: string;
   replace: string;
   caseSensitive: boolean;
 }
 
-export class EditorController {
-  private crepe: Crepe | null = null;
-  private changeCb: () => void = () => {};
-  // Captured per-load(): Crepe rebuilds its ProseMirror view on every load(),
-  // so the view (and the search plugin attached to it) must be recaptured.
-  private view: EditorView | null = null;
+/**
+ * A dark syntax-highlight style. CM6's bundled defaultHighlightStyle is tuned
+ * for light backgrounds, so we provide a complementary dark palette and swap
+ * between them in the highlight compartment alongside the editor theme.
+ */
+const darkHighlightStyle = HighlightStyle.define([
+  { tag: tags.heading, color: "#9cdcfe", fontWeight: "bold" },
+  { tag: tags.strong, color: "#e8e8e8", fontWeight: "bold" },
+  { tag: tags.emphasis, color: "#e8e8e8", fontStyle: "italic" },
+  { tag: tags.link, color: "#4da6ff" },
+  { tag: tags.url, color: "#4da6ff" },
+  { tag: tags.monospace, color: "#ce9178" },
+  { tag: tags.quote, color: "#9aa0a6" },
+  { tag: [tags.list, tags.contentSeparator], color: "#c586c0" },
+  { tag: tags.processingInstruction, color: "#777" },
+]);
 
-  constructor(private readonly root: string) {}
+const baseLightTheme = EditorView.theme({}, { dark: false });
+const baseDarkTheme = EditorView.theme({}, { dark: true });
+
+/**
+ * ViewPlugin that decorates matches of the active search query in the visible
+ * viewport. @codemirror/search only paints matches while ITS panel is open
+ * (which we never open — the app owns ⌘F via the native menu + FindBar), so we
+ * roll our own highlighter that reads the live query off the state.
+ */
+const searchMatchHighlighter = ViewPlugin.fromClass(
+  class {
+    decorations: DecorationSet;
+    constructor(view: EditorView) {
+      this.decorations = this.build(view);
+    }
+    update(update: ViewUpdate) {
+      const queryChanged =
+        getSearchQuery(update.startState) !== getSearchQuery(update.state);
+      if (update.docChanged || update.viewportChanged || update.selectionSet || queryChanged) {
+        this.decorations = this.build(update.view);
+      }
+    }
+    build(view: EditorView): DecorationSet {
+      const query = getSearchQuery(view.state);
+      if (!query.valid) return Decoration.none;
+      const sel = view.state.selection.main;
+      const deco = [];
+      const matchMark = Decoration.mark({ class: "cm-searchMatch" });
+      const selectedMark = Decoration.mark({ class: "cm-searchMatch cm-searchMatch-selected" });
+      for (const { from, to } of view.visibleRanges) {
+        const cursor = query.getCursor(view.state.doc, from, to);
+        for (let next = cursor.next(); !next.done; next = cursor.next()) {
+          const m = next.value;
+          if (m.from === m.to) continue; // guard zero-length
+          const isSelected = m.from === sel.from && m.to === sel.to;
+          deco.push((isSelected ? selectedMark : matchMark).range(m.from, m.to));
+        }
+      }
+      return Decoration.set(deco, true);
+    }
+  },
+  { decorations: (v) => v.decorations },
+);
+
+/**
+ * CodeMirror 6 source-mode markdown editor. A single EditorView lives for the
+ * lifetime of the controller; load() swaps
+ * the document via setState (preserving theme + zoom), and round-trips are
+ * byte-faithful (getMarkdown() returns the exact document text).
+ */
+export class EditorController {
+  private readonly view: EditorView;
+  private changeCb: () => void = () => {};
+  private loading = false;
+  private dark = false;
+  private fontLevel = 1;
+
+  private readonly themeCompartment = new Compartment();
+  private readonly highlightCompartment = new Compartment();
+  private readonly fontCompartment = new Compartment();
+
+  constructor(root: string) {
+    const parent = document.querySelector(root);
+    if (!parent) throw new Error(`Editor mount point not found: ${root}`);
+    this.view = new EditorView({
+      parent,
+      state: this.makeState(""),
+    });
+  }
+
+  private makeState(content: string): EditorState {
+    return EditorState.create({
+      doc: content,
+      extensions: [
+        history(),
+        keymap.of([...defaultKeymap, ...historyKeymap]),
+        markdown(),
+        EditorView.lineWrapping,
+        this.themeCompartment.of(this.dark ? baseDarkTheme : baseLightTheme),
+        this.highlightCompartment.of(
+          this.dark
+            ? syntaxHighlighting(darkHighlightStyle, { fallback: true })
+            : syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
+        ),
+        this.fontCompartment.of(this.fontTheme(this.fontLevel)),
+        searchMatchHighlighter,
+        EditorView.updateListener.of((update) => {
+          if (update.docChanged && !this.loading) this.changeCb();
+        }),
+      ] as Extension[],
+    });
+  }
+
+  private fontTheme(level: number): Extension {
+    return EditorView.theme({ "&": { fontSize: `${16 * level}px` } });
+  }
 
   /** Fired on every user edit (not on programmatic load()). */
   onChange(cb: () => void): void {
@@ -57,93 +157,100 @@ export class EditorController {
   }
 
   async load(content: string): Promise<void> {
-    // Drop the old view up front: it's destroyed below, and search methods
-    // read this.view, so this prevents any operation on a torn-down view.
-    this.view = null;
-    if (this.crepe) await this.crepe.destroy();
-    const crepe = new Crepe({ root: this.root, defaultValue: content });
-    // Configure the serializer before create() so saves are deterministic.
-    // Defensive: a config hiccup must never prevent the editor from rendering.
-    crepe.editor.config((ctx) => {
-      try {
-        ctx.set(remarkStringifyOptionsCtx, {
-          ...ctx.get(remarkStringifyOptionsCtx),
-          ...STRINGIFY_OPTIONS,
-        });
-      } catch (err) {
-        console.warn("Could not configure markdown serializer:", err);
-      }
-    });
-    // Register prosemirror-search's plugin into the same ProseMirror instance
-    // Milkdown uses. $prose appends to prosePluginsCtx using Milkdown's bundled
-    // prosemirror-state/view, so highlight decorations and commands work.
-    crepe.editor.use($prose(() => search()));
-    await crepe.create();
-    // Attached after create() so the initial document load doesn't mark dirty.
-    crepe.on((listener) => listener.markdownUpdated(() => this.changeCb()));
-    this.view = crepe.editor.action((ctx) => ctx.get(editorViewCtx));
-    this.crepe = crepe;
+    this.loading = true;
+    try {
+      // Fresh state: drops undo history (load isn't undoable into the previous
+      // file) while makeState re-applies the current theme + zoom compartments.
+      this.view.setState(this.makeState(content));
+      this.view.dispatch({ selection: { anchor: 0 } });
+    } finally {
+      this.loading = false;
+    }
   }
 
   getMarkdown(): string {
-    return this.crepe?.getMarkdown() ?? "";
+    return this.view.state.doc.toString();
   }
 
-  // --- Find / Replace (wraps prosemirror-search against the captured view) ---
+  setTheme(dark: boolean): void {
+    this.dark = dark;
+    this.view.dispatch({
+      effects: [
+        this.themeCompartment.reconfigure(dark ? baseDarkTheme : baseLightTheme),
+        this.highlightCompartment.reconfigure(
+          dark
+            ? syntaxHighlighting(darkHighlightStyle, { fallback: true })
+            : syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
+        ),
+      ],
+    });
+  }
+
+  setZoom(level: number): void {
+    this.fontLevel = level;
+    this.view.dispatch({
+      effects: this.fontCompartment.reconfigure(this.fontTheme(level)),
+    });
+  }
+
+  // CM6 owns its own undo history; WKWebView's native undo (which the
+  // predefined Edit-menu items would trigger) doesn't reach it, so the menu
+  // routes Undo/Redo here.
+  undo(): void {
+    cmUndo(this.view);
+    this.view.focus();
+  }
+
+  redo(): void {
+    cmRedo(this.view);
+    this.view.focus();
+  }
+
+  // --- Find / Replace (wraps @codemirror/search against the live view) ---
 
   /**
-   * Highlight all matches for `query`. Returns the match count (cheap doc
-   * scan), or null if the editor/view isn't ready or the query is empty.
+   * Set the active search query. Returns the match count, or null if the query
+   * is empty/invalid.
    */
   setSearch(opts: SearchOptions): number | null {
-    const view = this.view;
-    if (!view) return null;
     const query = new SearchQuery({
       search: opts.query,
       replace: opts.replace,
       caseSensitive: opts.caseSensitive,
     });
-    view.dispatch(setSearchState(view.state.tr, query));
-    if (!query.valid) return 0;
+    this.view.dispatch({ effects: setSearchQuery.of(query) });
+    if (!query.valid) return null;
     let count = 0;
-    let result = query.findNext(view.state);
-    while (result) {
+    const cursor = query.getCursor(this.view.state.doc);
+    for (let next = cursor.next(); !next.done; next = cursor.next()) {
+      if (next.value.from === next.value.to) continue; // guard zero-length
       count++;
-      const next = query.findNext(view.state, result.to);
-      // Guard against zero-width matches looping forever.
-      if (next && next.from <= result.from) break;
-      result = next;
     }
     return count;
   }
 
   findNext(): void {
-    this.runSearchCommand(findNext);
+    cmFindNext(this.view);
+    this.view.focus();
   }
 
   findPrev(): void {
-    this.runSearchCommand(findPrev);
+    cmFindPrevious(this.view);
+    this.view.focus();
   }
 
   replaceNext(): void {
-    this.runSearchCommand(replaceNext);
+    cmReplaceNext(this.view);
+    this.view.focus();
   }
 
   replaceAll(): void {
-    this.runSearchCommand(replaceAll);
+    cmReplaceAll(this.view);
+    this.view.focus();
   }
 
   /** Clear the active query so highlights disappear. */
   clearSearch(): void {
-    const view = this.view;
-    if (!view) return;
-    view.dispatch(setSearchState(view.state.tr, new SearchQuery({ search: "" })));
-  }
-
-  private runSearchCommand(cmd: (state: EditorView["state"], dispatch: EditorView["dispatch"]) => boolean): void {
-    const view = this.view;
-    if (!view) return;
-    cmd(view.state, view.dispatch);
-    view.focus();
+    this.view.dispatch({ effects: setSearchQuery.of(new SearchQuery({ search: "" })) });
   }
 }
