@@ -120,6 +120,11 @@ body {
   display: none;
 }
 
+/* We use our own find bar; never show CodeMirror's built-in search panel. */
+.cm-editor .cm-panels {
+  display: none;
+}
+
 /* Unsaved-changes sheet */
 .modal-overlay {
   position: fixed;

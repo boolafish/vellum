@@ -107,6 +107,7 @@ export class FindBar {
     this.el.classList.add("hidden");
     window.removeEventListener("keydown", this.onWindowKey, true);
     this.editor.clearSearch();
+    this.editor.focusEditor(); // return focus so editing resumes
   }
 
   private onInputKey(e: KeyboardEvent): void {

@@ -19,6 +19,7 @@ import { markdown } from "@codemirror/lang-markdown";
 import { languages as codeLanguages } from "@codemirror/language-data";
 import { GFM } from "@lezer/markdown";
 import {
+  search,
   SearchQuery,
   setSearchQuery,
   getSearchQuery,
@@ -189,6 +190,10 @@ export class EditorController {
       extensions: [
         history(),
         keymap.of([...defaultKeymap, ...historyKeymap]),
+        // Provide the search state field (NOT searchKeymap) so our find bar's
+        // findNext/replace commands navigate without CodeMirror bootstrapping
+        // its own (ugly) search panel. We never call openSearchPanel.
+        search(),
         markdown({ codeLanguages, extensions: [GFM] }),
         EditorView.lineWrapping,
         this.themeCompartment.of(this.dark ? baseDarkTheme : baseLightTheme),
@@ -322,28 +327,34 @@ export class EditorController {
     return count;
   }
 
+  // Find/replace navigation MUST NOT focus the editor: the find bar input keeps
+  // focus so the user's next Enter advances the match instead of inserting a
+  // newline in the document. The match still scrolls into view (CM scrolls on
+  // selection change regardless of focus). Focus returns to the editor only
+  // when the bar closes (focusEditor).
   findNext(): void {
     cmFindNext(this.view);
-    this.view.focus();
   }
 
   findPrev(): void {
     cmFindPrevious(this.view);
-    this.view.focus();
   }
 
   replaceNext(): void {
     cmReplaceNext(this.view);
-    this.view.focus();
   }
 
   replaceAll(): void {
     cmReplaceAll(this.view);
-    this.view.focus();
   }
 
   /** Clear the active query so highlights disappear. */
   clearSearch(): void {
     this.view.dispatch({ effects: setSearchQuery.of(new SearchQuery({ search: "" })) });
+  }
+
+  /** Return focus to the editor (e.g. after the find bar closes). */
+  focusEditor(): void {
+    this.view.focus();
   }
 }
