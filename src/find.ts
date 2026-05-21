@@ -162,9 +162,12 @@ export class FindBar {
     } else if (count === null) {
       this.countLabel.textContent = "";
     } else if (count === 0) {
-      this.countLabel.textContent = "No results";
+      this.countLabel.textContent = "0";
+      this.countLabel.title = "No results";
     } else {
-      this.countLabel.textContent = `${count} match${count === 1 ? "" : "es"}`;
+      // Compact count so the input gets more room.
+      this.countLabel.textContent = String(count);
+      this.countLabel.title = `${count} match${count === 1 ? "" : "es"}`;
     }
   }
 

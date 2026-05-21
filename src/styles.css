@@ -216,7 +216,8 @@ body {
   flex-direction: column;
   gap: 6px;
   padding: 10px;
-  width: 340px;
+  width: 540px;
+  max-width: calc(100vw - 32px);
   border-radius: 10px;
   background: var(--bg);
   color: var(--fg);
