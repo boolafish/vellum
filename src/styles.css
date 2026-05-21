@@ -58,8 +58,8 @@ body {
   border-bottom: 1px solid var(--border);
   user-select: none;
   -webkit-user-select: none;
-  /* Lets you drag the window by the toolbar */
-  -webkit-app-region: drag;
+  /* Window dragging is enabled via data-tauri-drag-region on the header in
+     index.html — WKWebView ignores Electron's -webkit-app-region. */
 }
 
 #dirty-dot {
@@ -76,11 +76,12 @@ body {
   overflow-y: auto;
 }
 
-/* Center the editing column, Typora-style */
+/* Center the editing column, Typora-style. Wider measure with modest side
+   padding so the window width isn't wasted; still capped for readability. */
 .milkdown {
-  max-width: 720px;
+  max-width: 1000px;
   margin: 0 auto;
-  padding: 24px 32px 40vh;
+  padding: 24px 56px 40vh;
 }
 
 /* Typography polish: comfortable reading rhythm on top of the Crepe theme. */
@@ -181,10 +182,12 @@ body {
   color: #fff;
 }
 
-.modal-btn.ghost {
-  background: transparent;
-  border-color: transparent;
-  color: var(--muted);
+.modal-btn:hover {
+  background: color-mix(in srgb, var(--fg) 12%, transparent);
+}
+
+.modal-btn.primary:hover {
+  background: #2559d6;
 }
 
 /* Find / Replace bar — pinned top-right of the editor, modal aesthetic. */

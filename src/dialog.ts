@@ -32,7 +32,7 @@ export function confirmUnsavedChanges(name: string): Promise<DiscardChoice> {
         )}”?</p>
         <p class="modal-body">Your changes will be lost if you don’t save them.</p>
         <div class="modal-actions">
-          <button type="button" data-choice="dont-save" class="modal-btn ghost">Don’t Save</button>
+          <button type="button" data-choice="dont-save" class="modal-btn">Don’t Save</button>
           <span class="modal-spacer"></span>
           <button type="button" data-choice="cancel" class="modal-btn">Cancel</button>
           <button type="button" data-choice="save" class="modal-btn primary">Save</button>
