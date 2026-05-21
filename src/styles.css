@@ -419,6 +419,7 @@ body {
 }
 
 .cm-lp-table {
+  width: 100%;
   border-collapse: collapse;
   font-size: 0.95em;
   line-height: 1.5;
