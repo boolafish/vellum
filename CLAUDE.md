@@ -4,6 +4,13 @@ A lightweight, fast, Mac-only Markdown editor. **Tauri 2** (Rust +
 WKWebView) shell, **CodeMirror 6** editor (source mode: syntax-highlighted
 markdown), vanilla TypeScript + Vite frontend. Single-window, document-centric.
 
+## Git
+
+- **Do not add an AI agent co-author** (no `Co-Authored-By: Claude`/AI trailers) to
+  commits or PRs.
+- **Commit messages follow Conventional Commits**: a `type: subject` prefix such as
+  `feat:`, `fix:`, `chore:`, `docs:`, `refactor:`, `test:`, `style:`, `perf:`.
+
 ## Commands
 
 ```bash
